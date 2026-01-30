@@ -1,0 +1,5 @@
+__version__ = "1.0.1"
+__author__ = "Rizz"
+__github__ = "https://github.com/iam-rizz/virtualizor-telegram-bot"
+__telegram__ = "https://t.me/rizzid03"
+__forum__ = "https://t.me/IPv6Indonesia"

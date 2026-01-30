@@ -1,1 +1,0 @@
-"""Virtualizor Telegram Bot."""

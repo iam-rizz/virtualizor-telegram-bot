@@ -1,5 +1,10 @@
 # Virtualizor Telegram Bot
 
+[![Quality Gate Status](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=alert_status&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
+[![Lines of Code](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=ncloc&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
+[![Maintainability Rating](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=software_quality_maintainability_rating&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
+[![Security Rating](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=software_quality_security_rating&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
+
 Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang untuk penggunaan single-user dengan antarmuka yang bersih dan profesional.
 
 ## Fitur
@@ -28,6 +33,7 @@ virtualizor-telegram-bot/
 │   ├── bot.py
 │   ├── config.py
 │   ├── logger.py
+│   ├── version.py
 │   ├── api/
 │   │   ├── client.py
 │   │   └── exceptions.py
@@ -46,7 +52,7 @@ virtualizor-telegram-bot/
 
 1. Clone repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/iam-rizz/virtualizor-telegram-bot.git
 cd virtualizor-telegram-bot
 ```
 
@@ -100,6 +106,7 @@ Struktur menu:
     - Set Default
     - Delete API
   - Virtual Machines
+    - Pilih API (jika lebih dari satu)
     - List VMs
     - VM Details (status, IP, VPS ID)
 
@@ -119,11 +126,12 @@ Saat menambahkan API, Anda memerlukan:
 
 Bot menampilkan log berwarna dengan banner startup:
 ```
-    ╔═══════════════════════════════════════════╗
-    ║     Virtualizor Telegram Bot v1.0.0       ║
-    ║     ─────────────────────────────────     ║
-    ║     VM Management via Telegram            ║
-    ╚═══════════════════════════════════════════╝
+╔═══════════════════════════════════════════╗
+║   Virtualizor Telegram Bot v1.0.1         ║
+║   ─────────────────────────────────────   ║
+║   VM Management via Telegram              ║
+║   github.com/iam-rizz                     ║
+╚═══════════════════════════════════════════╝
 
 22:30:15    INFO bot          Starting bot...
 22:30:15    INFO bot          Configuration loaded
@@ -144,6 +152,12 @@ Bot menampilkan log berwarna dengan banner startup:
 - Kontrol power VM (start/stop/restart)
 - Manajemen port forwarding
 - Monitoring resource
+
+## Author
+
+- GitHub: [@iam-rizz](https://github.com/iam-rizz)
+- Telegram: [@rizzid03](https://t.me/rizzid03)
+- Forum: [IPv6Indonesia](https://t.me/IPv6Indonesia)
 
 ## Lisensi
 

@@ -1,13 +1,10 @@
-"""API exceptions."""
-
-
 class APIError(Exception):
-    """API related errors."""
+    pass
 
 
 class APIConnectionError(APIError):
-    """Connection errors."""
+    pass
 
 
 class AuthenticationError(APIError):
-    """Authentication errors."""
+    pass

@@ -1,6 +1,4 @@
-"""Telegram handlers module."""
-
-from .base import start, show_main_menu, show_api_menu
+from .base import start, show_main_menu, show_api_menu, show_about
 from .api_management import (
     api_add_start,
     input_name,
@@ -20,6 +18,7 @@ from .api_management import (
 )
 from .vm_management import (
     show_vms_menu,
+    vm_select_api,
     vm_list,
     vm_detail,
 )
@@ -28,6 +27,7 @@ __all__ = [
     "start",
     "show_main_menu",
     "show_api_menu",
+    "show_about",
     "show_vms_menu",
     "api_add_start",
     "input_name",
@@ -44,6 +44,7 @@ __all__ = [
     "INPUT_URL",
     "INPUT_KEY",
     "INPUT_PASS",
+    "vm_select_api",
     "vm_list",
     "vm_detail",
 ]

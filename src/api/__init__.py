@@ -1,5 +1,3 @@
-"""Virtualizor API module."""
-
 from .client import VirtualizorAPI
 from .exceptions import APIError, APIConnectionError, AuthenticationError
 

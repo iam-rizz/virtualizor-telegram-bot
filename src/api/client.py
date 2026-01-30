@@ -1,5 +1,3 @@
-"""Virtualizor API client."""
-
 import base64
 from typing import Dict, Any, List
 import requests
@@ -11,8 +9,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class VirtualizorAPI:
-    """Virtualizor API client."""
-
     TIMEOUT = 30
 
     def __init__(self, api_url: str, api_key: str, api_pass: str):
@@ -22,12 +18,10 @@ class VirtualizorAPI:
 
     @classmethod
     def from_db_config(cls, config: Dict[str, Any]) -> "VirtualizorAPI":
-        """Create from database config."""
         api_pass = base64.b64decode(config["api_pass"]).decode()
         return cls(config["api_url"], config["api_key"], api_pass)
 
     def _build_url(self, action: str, **params) -> str:
-        """Build API URL."""
         base_params = {
             "act": action,
             "api": "json",
@@ -39,7 +33,6 @@ class VirtualizorAPI:
         return f"{self.api_url}?{query}"
 
     def _request(self, action: str, **params) -> Dict[str, Any]:
-        """Make API request."""
         url = self._build_url(action, **params)
         try:
             response = requests.get(url, timeout=self.TIMEOUT, verify=False)
@@ -57,19 +50,14 @@ class VirtualizorAPI:
             raise APIError("Invalid response from server") from e
 
     def test_connection(self) -> Dict[str, Any]:
-        """Test API connection and return server info."""
         response = self._request("listvs")
         if "error" in response and response["error"]:
             raise AuthenticationError("Invalid API credentials")
 
         vs_count = len(response.get("vs", {})) if response.get("vs") else 0
-        return {
-            "success": True,
-            "vm_count": vs_count,
-        }
+        return {"success": True, "vm_count": vs_count}
 
     def list_vms(self) -> List[Dict[str, Any]]:
-        """List all VMs."""
         response = self._request("listvs")
         vs_data = response.get("vs", {})
         if not vs_data:
@@ -84,12 +72,10 @@ class VirtualizorAPI:
                     ipv4 = ip
                     break
 
-            vms.append(
-                {
-                    "vpsid": vpsid,
-                    "hostname": data.get("hostname", ""),
-                    "ipv4": ipv4,
-                    "status": "running" if data.get("status") == 1 else "stopped",
-                }
-            )
+            vms.append({
+                "vpsid": vpsid,
+                "hostname": data.get("hostname", ""),
+                "ipv4": ipv4,
+                "status": "running" if data.get("status") == 1 else "stopped",
+            })
         return vms

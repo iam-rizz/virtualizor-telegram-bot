@@ -1,5 +1,3 @@
-"""Main bot module."""
-
 import warnings
 
 from telegram.ext import (
@@ -18,6 +16,7 @@ from src.handlers import (
     start,
     show_main_menu,
     show_api_menu,
+    show_about,
     show_vms_menu,
     api_add_start,
     input_name,
@@ -32,6 +31,7 @@ from src.handlers import (
     api_default_confirm,
     vm_list,
     vm_detail,
+    vm_select_api,
     INPUT_NAME,
     INPUT_URL,
     INPUT_KEY,
@@ -42,14 +42,12 @@ logger = setup_logger()
 
 
 async def post_init(application: Application):
-    """Initialize database after bot starts."""
     await db.init()
     logger.info("Database initialized")
     logger.info("Bot is ready and listening for updates")
 
 
 def create_application() -> Application:
-    """Create and configure bot application."""
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN not set")
 
@@ -58,7 +56,6 @@ def create_application() -> Application:
 
     application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # Add API conversation handler
     api_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(api_add_start, pattern="^api_add$")],
         states={
@@ -72,31 +69,21 @@ def create_application() -> Application:
         per_chat=True,
     )
 
-    # Handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(api_conv)
 
-    # Menu callbacks
     application.add_handler(CallbackQueryHandler(show_main_menu, pattern="^menu_main$"))
     application.add_handler(CallbackQueryHandler(show_api_menu, pattern="^menu_api$"))
     application.add_handler(CallbackQueryHandler(show_vms_menu, pattern="^menu_vms$"))
+    application.add_handler(CallbackQueryHandler(show_about, pattern="^menu_about$"))
 
-    # API management callbacks
     application.add_handler(CallbackQueryHandler(api_list, pattern="^api_list$"))
-    application.add_handler(
-        CallbackQueryHandler(api_delete_start, pattern="^api_delete$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_delete_confirm, pattern="^apidel_")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_default_start, pattern="^api_default$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_default_confirm, pattern="^apidef_")
-    )
+    application.add_handler(CallbackQueryHandler(api_delete_start, pattern="^api_delete$"))
+    application.add_handler(CallbackQueryHandler(api_delete_confirm, pattern="^apidel_"))
+    application.add_handler(CallbackQueryHandler(api_default_start, pattern="^api_default$"))
+    application.add_handler(CallbackQueryHandler(api_default_confirm, pattern="^apidef_"))
 
-    # VM management callbacks
+    application.add_handler(CallbackQueryHandler(vm_select_api, pattern="^vmapi_"))
     application.add_handler(CallbackQueryHandler(vm_list, pattern="^vm_list$"))
     application.add_handler(CallbackQueryHandler(vm_detail, pattern="^vm_"))
 
@@ -104,7 +91,6 @@ def create_application() -> Application:
 
 
 def run():
-    """Run the bot."""
     warnings.filterwarnings("ignore", message=".*per_message.*")
 
     print_banner()
