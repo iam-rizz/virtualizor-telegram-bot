@@ -1,21 +1,49 @@
 """Telegram handlers module."""
 
-from .base import start, help_command, cancel
+from .base import start, show_main_menu, show_api_menu
 from .api_management import (
-    get_addapi_handler,
-    listapi,
-    deleteapi_start,
-    setdefault_start,
-    get_callback_handler,
+    api_add_start,
+    input_name,
+    input_url,
+    input_key,
+    input_pass,
+    api_cancel,
+    api_list,
+    api_delete_start,
+    api_delete_confirm,
+    api_default_start,
+    api_default_confirm,
+    INPUT_NAME,
+    INPUT_URL,
+    INPUT_KEY,
+    INPUT_PASS,
+)
+from .vm_management import (
+    show_vms_menu,
+    vm_list,
+    vm_detail,
 )
 
 __all__ = [
     "start",
-    "help_command",
-    "cancel",
-    "get_addapi_handler",
-    "listapi",
-    "deleteapi_start",
-    "setdefault_start",
-    "get_callback_handler",
+    "show_main_menu",
+    "show_api_menu",
+    "show_vms_menu",
+    "api_add_start",
+    "input_name",
+    "input_url",
+    "input_key",
+    "input_pass",
+    "api_cancel",
+    "api_list",
+    "api_delete_start",
+    "api_delete_confirm",
+    "api_default_start",
+    "api_default_confirm",
+    "INPUT_NAME",
+    "INPUT_URL",
+    "INPUT_KEY",
+    "INPUT_PASS",
+    "vm_list",
+    "vm_detail",
 ]

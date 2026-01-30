@@ -4,10 +4,14 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 
 ## Fitur
 
-- Tambah dan validasi konfigurasi API Virtualizor
-- Simpan beberapa profil API dengan SQLite
-- Pengujian koneksi dengan pesan error detail
-- Penanganan kredensial yang aman
+- Navigasi full button (tidak perlu command kecuali /start)
+- Antarmuka chat bersih dengan auto-delete pesan user
+- Menu interaktif menggunakan inline keyboard
+- Pesan dengan format Markdown
+- Support multiple profil API dengan penyimpanan SQLite
+- Daftar VM dengan indikator status
+- Validasi koneksi dengan pesan error detail
+- Console logging berwarna dengan banner startup
 
 ## Persyaratan
 
@@ -19,25 +23,23 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 
 ```
 virtualizor-telegram-bot/
-├── main.py                 # Entry point
+├── main.py
 ├── src/
-│   ├── __init__.py
-│   ├── bot.py              # Setup aplikasi bot
-│   ├── config.py           # Konfigurasi
+│   ├── bot.py
+│   ├── config.py
+│   ├── logger.py
 │   ├── api/
-│   │   ├── __init__.py
-│   │   ├── client.py       # Virtualizor API client
-│   │   └── exceptions.py   # API exceptions
+│   │   ├── client.py
+│   │   └── exceptions.py
 │   ├── database/
-│   │   ├── __init__.py
-│   │   └── manager.py      # SQLite database handler
+│   │   └── manager.py
 │   └── handlers/
-│       ├── __init__.py
-│       ├── base.py         # Handler dasar (start, help)
-│       └── api_management.py  # Handler CRUD API
-├── data/                   # Penyimpanan database (auto-created)
+│       ├── base.py
+│       ├── api_management.py
+│       └── vm_management.py
+├── data/
 ├── requirements.txt
-└── README.md
+└── .env
 ```
 
 ## Instalasi
@@ -52,8 +54,7 @@ cd virtualizor-telegram-bot
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/macOS
-# atau
-venv\Scripts\activate  # Windows
+venv\Scripts\activate     # Windows
 ```
 
 3. Install dependencies:
@@ -61,15 +62,18 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-4. Konfigurasi environment variables:
+4. Buat file `.env`:
 ```bash
-export BOT_TOKEN="token-bot-telegram-anda"
-export ALLOWED_USER_ID="id-telegram-anda"
+cp .env.example .env
 ```
 
-Untuk mendapatkan Telegram user ID, kirim pesan ke @userinfobot di Telegram.
+5. Edit `.env` dengan kredensial Anda:
+```
+BOT_TOKEN=token-bot-telegram-anda
+ALLOWED_USER_ID=id-telegram-anda
+```
 
-5. Jalankan bot:
+6. Jalankan bot:
 ```bash
 python main.py
 ```
@@ -79,42 +83,66 @@ python main.py
 | Variable | Deskripsi |
 |----------|-----------|
 | BOT_TOKEN | Token bot Telegram dari @BotFather |
-| ALLOWED_USER_ID | ID Telegram Anda (hanya user ini yang bisa akses bot) |
+| ALLOWED_USER_ID | ID Telegram Anda |
 | DATABASE_PATH | Path database SQLite (default: data/bot.db) |
 
-## Perintah
+## Penggunaan
 
-| Perintah | Deskripsi |
-|----------|-----------|
-| /start | Tampilkan pesan selamat datang dan perintah tersedia |
-| /addapi | Tambah konfigurasi API Virtualizor baru |
-| /listapi | Daftar semua konfigurasi API tersimpan |
-| /deleteapi | Hapus konfigurasi API |
-| /setdefault | Set API default untuk operasi |
-| /help | Tampilkan pesan bantuan |
+1. Mulai bot dengan `/start`
+2. Navigasi menggunakan tombol inline
+3. Semua interaksi berbasis tombol untuk pengalaman yang bersih
+
+Struktur menu:
+- Menu Utama
+  - API Management
+    - Add API
+    - List APIs
+    - Set Default
+    - Delete API
+  - Virtual Machines
+    - List VMs
+    - VM Details (status, IP, VPS ID)
+
+## Mendapatkan Kredensial
+
+- BOT_TOKEN: Kirim pesan ke @BotFather di Telegram, ketik /newbot
+- ALLOWED_USER_ID: Kirim pesan ke @userinfobot di Telegram
 
 ## Konfigurasi API
 
 Saat menambahkan API, Anda memerlukan:
+1. API URL (contoh: https://panel.example.com:4085/index.php)
+2. API Key (dari Virtualizor Admin Panel > Configuration > API Credentials)
+3. API Password (dari lokasi yang sama)
 
-1. API URL - URL panel Virtualizor Anda (contoh: https://panel.example.com:4085/index.php)
-2. API Key - Ditemukan di Virtualizor Admin Panel > Configuration > API Credentials
-3. API Password - Password API dari lokasi yang sama
+## Output Console
 
-Bot memvalidasi kredensial sebelum menyimpan dengan menguji koneksi ke panel Virtualizor Anda.
+Bot menampilkan log berwarna dengan banner startup:
+```
+    ╔═══════════════════════════════════════════╗
+    ║     Virtualizor Telegram Bot v1.0.0       ║
+    ║     ─────────────────────────────────     ║
+    ║     VM Management via Telegram            ║
+    ╚═══════════════════════════════════════════╝
 
-## Catatan Keamanan
+22:30:15    INFO bot          Starting bot...
+22:30:15    INFO bot          Configuration loaded
+22:30:15    INFO bot          Authorized user: 123456789
+22:30:16    INFO bot          Database initialized
+22:30:16    INFO bot          Bot is ready and listening for updates
+```
 
-- Hanya ALLOWED_USER_ID yang dikonfigurasi yang dapat berinteraksi dengan bot
-- Password API disimpan ter-encode di database SQLite lokal
-- Pesan password otomatis dihapus setelah diproses
-- Verifikasi SSL dinonaktifkan secara default untuk sertifikat self-signed
+## Keamanan
+
+- Akses single user saja
+- Password API disimpan ter-encode
+- Pesan user otomatis dihapus
+- Verifikasi SSL dinonaktifkan untuk sertifikat self-signed
 
 ## Fitur yang Direncanakan
 
-- Daftar dan kelola VM
-- Manajemen port forwarding
 - Kontrol power VM (start/stop/restart)
+- Manajemen port forwarding
 - Monitoring resource
 
 ## Lisensi
