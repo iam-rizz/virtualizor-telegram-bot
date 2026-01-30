@@ -11,10 +11,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class VirtualizorAPI:
     TIMEOUT = 30
 
-    def __init__(self, api_url: str, api_key: str, api_pass: str):
+    def __init__(self, api_url: str, api_key: str, api_pass: str, verify_ssl: bool = False):
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
         self.api_pass = api_pass
+        self.verify_ssl = verify_ssl
 
     @classmethod
     def from_db_config(cls, config: Dict[str, Any]) -> "VirtualizorAPI":
@@ -35,7 +36,7 @@ class VirtualizorAPI:
     def _request(self, action: str, **params) -> Dict[str, Any]:
         url = self._build_url(action, **params)
         try:
-            response = requests.get(url, timeout=self.TIMEOUT, verify=False)
+            response = requests.get(url, timeout=self.TIMEOUT, verify=self.verify_ssl)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.Timeout as e:

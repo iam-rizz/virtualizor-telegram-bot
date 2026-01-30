@@ -5,6 +5,19 @@
 [![Maintainability Rating](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=software_quality_maintainability_rating&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
 [![Security Rating](https://sonarqube.rizzcode.id/api/project_badges/measure?project=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c&metric=software_quality_security_rating&token=sqb_bde1cc989cafdc5cb6d0955492f0334bf180a1f8)](https://sonarqube.rizzcode.id/dashboard?id=iam-rizz_virtualizor-telegram-bot_ac4d47ff-1899-4b16-b098-fe634c597e6c)
 
+### Recommended VPS, NAT VPS (Virtualizor) & Hosting
+
+<div align="center">
+
+Need a VPS to test this script? **[HostData.id](https://hostdata.id)** provides a wide selection of reliable hosting options at affordable prices.
+
+[![HostData.id](https://img.shields.io/badge/HostData.id-VPS%20Trusted-FF6B35?style=flat&logo=server&logoColor=white)](https://hostdata.id) 
+[![NAT VPS](https://img.shields.io/badge/NAT%20VPS-Start%20from%2015K/Month-00C851?style=flat)](https://hostdata.id/nat-vps)
+[![VPS Indonesia](https://img.shields.io/badge/VPS%20Indonesia-Start%20from%20200K/Month-007ACC?style=flat&logo=server)](https://hostdata.id/vps-indonesia)
+[![Dedicated Server](https://img.shields.io/badge/Dedicated%20Server-Enterprise%20Ready-8B5CF6?style=flat&logo=server)](https://hostdata.id/dedicated-server)
+
+</div>
+
 A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for single-user operation with a clean, professional interface.
 
 ## Features
@@ -76,7 +89,7 @@ cp .env.example .env
 5. Edit `.env` with your credentials:
 ```
 BOT_TOKEN=your-telegram-bot-token
-ALLOWED_USER_ID=your-telegram-user-id
+ALLOWED_USER_IDS=123456789,987654321
 ```
 
 6. Run the bot:
@@ -89,7 +102,7 @@ python main.py
 | Variable | Description |
 |----------|-------------|
 | BOT_TOKEN | Telegram bot token from @BotFather |
-| ALLOWED_USER_ID | Your Telegram user ID |
+| ALLOWED_USER_IDS | Comma-separated Telegram user IDs (e.g., 123456789,987654321) |
 | DATABASE_PATH | SQLite database path (default: data/bot.db) |
 
 ## Usage

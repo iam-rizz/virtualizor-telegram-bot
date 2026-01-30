@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from src.config import ALLOWED_USER_ID
+from src.config import ALLOWED_USER_IDS
 from src.version import __version__, __author__, __github__, __telegram__, __forum__
 
 BTN_BACK = "< Back"
@@ -10,7 +10,7 @@ BTN_HOME = "Home"
 
 
 def auth_check(user_id: int) -> bool:
-    return user_id == ALLOWED_USER_ID
+    return user_id in ALLOWED_USER_IDS
 
 
 def chunk_buttons(buttons: list, cols: int = 2) -> list:

@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes, ConversationHandler
 
-from src.config import ALLOWED_USER_ID
+from src.config import ALLOWED_USER_IDS
 from src.database import db
 from src.api import VirtualizorAPI, APIError, APIConnectionError, AuthenticationError
 from .base import auth_check, get_api_menu, get_nav_buttons, chunk_buttons, delete_user_message
@@ -72,8 +72,8 @@ async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_msg = context.user_data.get("bot_msg")
     name = context.user_data.get("api_name")
 
-    if not url.startswith(("http://", "https://")):
-        text = TITLE_ADD_API + f"*Name:* `{name}`\n\nURL must start with `http://` or `https://`\nTry again:"
+    if not url.startswith("https://"):
+        text = TITLE_ADD_API + f"*Name:* `{name}`\n\nURL must start with `https://`\nTry again:"
         await bot_msg.edit_text(text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN)
         return INPUT_URL
 

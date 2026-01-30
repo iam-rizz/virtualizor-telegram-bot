@@ -9,7 +9,7 @@ from telegram.ext import (
     filters,
 )
 
-from src.config import BOT_TOKEN, ALLOWED_USER_ID
+from src.config import BOT_TOKEN, ALLOWED_USER_IDS
 from src.database import db
 from src.logger import setup_logger, print_banner
 from src.handlers import (
@@ -51,10 +51,16 @@ def create_application() -> Application:
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN not set")
 
-    if ALLOWED_USER_ID == 0:
-        raise ValueError("ALLOWED_USER_ID not set")
+    if not ALLOWED_USER_IDS:
+        raise ValueError("ALLOWED_USER_IDS not set")
 
-    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+    application = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .post_init(post_init)
+        .concurrent_updates(True)
+        .build()
+    )
 
     api_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(api_add_start, pattern="^api_add$")],
@@ -99,7 +105,7 @@ def run():
     try:
         application = create_application()
         logger.info("Configuration loaded")
-        logger.info(f"Authorized user: {ALLOWED_USER_ID}")
+        logger.info(f"Authorized users: {ALLOWED_USER_IDS}")
         application.run_polling(allowed_updates=["message", "callback_query"])
     except ValueError as e:
         logger.error(str(e))
