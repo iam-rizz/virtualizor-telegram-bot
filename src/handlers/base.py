@@ -5,6 +5,9 @@ from telegram.ext import ContextTypes
 from src.config import ALLOWED_USER_ID
 from src.version import __version__, __author__, __github__, __telegram__, __forum__
 
+BTN_BACK = "< Back"
+BTN_HOME = "Home"
+
 
 def auth_check(user_id: int) -> bool:
     return user_id == ALLOWED_USER_ID
@@ -17,9 +20,9 @@ def chunk_buttons(buttons: list, cols: int = 2) -> list:
 def get_nav_buttons(back: str = None, home: bool = True) -> list:
     buttons = []
     if back:
-        buttons.append(InlineKeyboardButton("< Back", callback_data=back))
+        buttons.append(InlineKeyboardButton(BTN_BACK, callback_data=back))
     if home:
-        buttons.append(InlineKeyboardButton("Home", callback_data="menu_main"))
+        buttons.append(InlineKeyboardButton(BTN_HOME, callback_data="menu_main"))
     return buttons
 
 
@@ -44,7 +47,7 @@ def get_api_menu() -> InlineKeyboardMarkup:
             InlineKeyboardButton("Set Default", callback_data="api_default"),
             InlineKeyboardButton("Delete API", callback_data="api_delete"),
         ],
-        [InlineKeyboardButton("< Back", callback_data="menu_main")],
+        [InlineKeyboardButton(BTN_BACK, callback_data="menu_main")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -73,7 +76,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*Virtualizor VM Manager*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
         "Select an option below:\n\n"
-        f"─────────────────────\n"
+        "─────────────────────\n"
         f"`v{__version__}` \\| by {__author__}"
     )
 
@@ -94,7 +97,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*Virtualizor VM Manager*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
         "Select an option below:\n\n"
-        f"─────────────────────\n"
+        "─────────────────────\n"
         f"`v{__version__}` \\| by {__author__}"
     )
     await query.edit_message_text(
@@ -109,7 +112,7 @@ async def show_api_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not auth_check(query.from_user.id):
         return
 
-    text = "*API Management*\n" "━━━━━━━━━━━━━━━━━━━━━\n\n" "Select an option:"
+    text = "*API Management*\n━━━━━━━━━━━━━━━━━━━━━\n\nSelect an option:"
     await query.edit_message_text(
         text, reply_markup=get_api_menu(), parse_mode=ParseMode.MARKDOWN
     )
@@ -142,7 +145,7 @@ async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("Telegram", url=__telegram__),
         ],
         [InlineKeyboardButton("Forum", url=__forum__)],
-        [InlineKeyboardButton("< Back", callback_data="menu_main")],
+        [InlineKeyboardButton(BTN_BACK, callback_data="menu_main")],
     ]
 
     await query.edit_message_text(

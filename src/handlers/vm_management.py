@@ -4,7 +4,9 @@ from telegram.ext import ContextTypes
 
 from src.database import db
 from src.api import VirtualizorAPI, APIError, APIConnectionError, AuthenticationError
-from .base import auth_check, get_nav_buttons, chunk_buttons
+from .base import auth_check, get_nav_buttons, chunk_buttons, BTN_BACK
+
+TITLE_VM = "*Virtual Machines*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
 
 
 def escape_md(text: str) -> str:
@@ -24,16 +26,9 @@ async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     apis = await db.list_apis()
 
     if not apis:
-        text = (
-            "*Virtual Machines*\n"
-            "━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "_No API configured\\._\n\n"
-            "Add an API first in API Management\\."
-        )
-        keyboard = [[InlineKeyboardButton("< Back", callback_data="menu_main")]]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        text = TITLE_VM + "_No API configured\\._\n\nAdd an API first in API Management\\."
+        keyboard = [[InlineKeyboardButton(BTN_BACK, callback_data="menu_main")]]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     if len(apis) == 1:
@@ -41,25 +36,16 @@ async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _show_vm_list(query, context, apis[0])
         return
 
-    text = (
-        "*Virtual Machines*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Select API to use:"
-    )
-
+    text = TITLE_VM + "Select API to use:"
     buttons = []
     for api in apis:
         default = " *" if api["is_default"] else ""
-        buttons.append(
-            InlineKeyboardButton(f"{api['name']}{default}", callback_data=f"vmapi_{api['name']}")
-        )
+        buttons.append(InlineKeyboardButton(f"{api['name']}{default}", callback_data=f"vmapi_{api['name']}"))
 
     keyboard = chunk_buttons(buttons, 2)
-    keyboard.append([InlineKeyboardButton("< Back", callback_data="menu_main")])
+    keyboard.append([InlineKeyboardButton(BTN_BACK, callback_data="menu_main")])
 
-    await query.edit_message_text(
-        text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN
-    )
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
 
 
 async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,11 +59,9 @@ async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
     api_config = await db.get_api(api_name)
 
     if not api_config:
-        text = "*Virtual Machines*\n━━━━━━━━━━━━━━━━━━━━━\n\n_API not found\\._"
+        text = TITLE_VM + "_API not found\\._"
         keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     context.user_data["selected_api"] = api_name
@@ -87,12 +71,7 @@ async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: dict):
     api_name = api_config["name"]
 
-    text = (
-        "*Virtual Machines*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"*API:* `{api_name}`\n\n"
-        "_Loading VMs\\.\\.\\._"
-    )
+    text = TITLE_VM + f"*API:* `{api_name}`\n\n_Loading VMs\\.\\.\\._"
     await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
@@ -100,18 +79,12 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
         vms = api.list_vms()
 
         if not vms:
-            text = (
-                "*Virtual Machines*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"*API:* `{api_name}`\n\n_No VMs found\\._"
-            )
+            text = TITLE_VM + f"*API:* `{api_name}`\n\n_No VMs found\\._"
             keyboard = [get_nav_buttons("menu_vms", True)]
-            await query.edit_message_text(
-                text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-            )
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
             return
 
-        text = f"*Virtual Machines* \\({len(vms)}\\)\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-        text += f"*API:* `{api_name}`\n\n"
+        text = f"*Virtual Machines* \\({len(vms)}\\)\n━━━━━━━━━━━━━━━━━━━━━\n\n*API:* `{api_name}`\n\n"
 
         buttons = []
         for vm in vms:
@@ -122,38 +95,28 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             text += f"{status_icon} *{hostname}*\n    `{ip}`\n\n"
 
             btn_name = vm['hostname'][:15] + ".." if len(vm['hostname']) > 15 else vm['hostname']
-            buttons.append(
-                InlineKeyboardButton(f"{status_icon} {btn_name}", callback_data=f"vm_{api_config['name']}_{vm['vpsid']}")
-            )
+            buttons.append(InlineKeyboardButton(f"{status_icon} {btn_name}", callback_data=f"vm_{api_config['name']}_{vm['vpsid']}"))
 
         keyboard = chunk_buttons(buttons, 2)
         keyboard.append([InlineKeyboardButton("Refresh", callback_data=f"vmapi_{api_config['name']}")])
         keyboard.append(get_nav_buttons("menu_vms", True))
 
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
     except APIConnectionError as e:
         text = f"*Connection Error*\n━━━━━━━━━━━━━━━━━━━━━\n\n`{escape_md(str(e))}`"
         keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
     except AuthenticationError:
         text = "*Authentication Error*\n━━━━━━━━━━━━━━━━━━━━━\n\n_Invalid API credentials\\._"
         keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
     except APIError as e:
         text = f"*API Error*\n━━━━━━━━━━━━━━━━━━━━━\n\n`{escape_md(str(e))}`"
         keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def vm_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -194,9 +157,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not vm:
             text = "*VM Details*\n━━━━━━━━━━━━━━━━━━━━━\n\n_VM not found\\._"
             keyboard = [get_nav_buttons(f"vmapi_{api_name}", True)]
-            await query.edit_message_text(
-                text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-            )
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
             return
 
         status_text = "Running" if vm["status"] == "running" else "Stopped"
@@ -218,13 +179,9 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             get_nav_buttons(f"vmapi_{api_name}", True),
         ]
 
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
     except (APIConnectionError, AuthenticationError, APIError) as e:
         text = f"*Error*\n━━━━━━━━━━━━━━━━━━━━━\n\n`{escape_md(str(e))}`"
         keyboard = [get_nav_buttons(f"vmapi_{api_name}", True)]
-        await query.edit_message_text(
-            text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
