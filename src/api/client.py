@@ -11,7 +11,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class VirtualizorAPI:
     TIMEOUT = 30
 
-    def __init__(self, api_url: str, api_key: str, api_pass: str, verify_ssl: bool = False):
+    def __init__(
+        self, api_url: str, api_key: str, api_pass: str, verify_ssl: bool = False
+    ):
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
         self.api_pass = api_pass
@@ -73,10 +75,19 @@ class VirtualizorAPI:
                     ipv4 = ip
                     break
 
-            vms.append({
-                "vpsid": vpsid,
-                "hostname": data.get("hostname", ""),
-                "ipv4": ipv4,
-                "status": "running" if data.get("status") == 1 else "stopped",
-            })
+            vms.append(
+                {
+                    "vpsid": vpsid,
+                    "hostname": data.get("hostname", ""),
+                    "ipv4": ipv4,
+                    "status": "running" if data.get("status") == 1 else "stopped",
+                    "vcpu": data.get("cores", 0),
+                    "ram": data.get("ram", 0),
+                    "disk": data.get("space", 0),
+                    "bandwidth": data.get("bandwidth", 0),
+                    "used_bandwidth": data.get("used_bandwidth", 0),
+                    "os": data.get("os_name", ""),
+                    "virt": data.get("virt", ""),
+                }
+            )
         return vms

@@ -35,6 +35,18 @@ def escape_md(text: str) -> str:
     return text
 
 
+def format_size(mb: int) -> str:
+    if mb >= 1024:
+        return f"{mb / 1024:.1f} GB"
+    return f"{mb} MB"
+
+
+def format_bandwidth(gb: float) -> str:
+    if gb >= 1024:
+        return f"{gb / 1024:.1f} TB"
+    return f"{gb:.1f} GB"
+
+
 async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -143,8 +155,7 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             f"*Virtual Machines* \\({len(vms)}\\)\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"*API:* `{escaped_api_name}`\n\n"
-            "Showing all VMs from this Virtualizor panel\\.\n"
-            "Select a VM to view details\\.\n\n"
+            "Select a VM to view details\\.\n"
             "Status: ● Running  ○ Stopped\n\n"
         )
 
@@ -153,8 +164,15 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             status_icon = "●" if vm["status"] == "running" else "○"
             hostname = escape_md(vm["hostname"])
             ip = escape_md(vm["ipv4"] or "No IP")
+            vcpu = vm.get("vcpu", 0)
+            ram = format_size(vm.get("ram", 0))
+            disk = format_size(vm.get("disk", 0))
 
-            text += f"{status_icon} *{hostname}*\n    `{ip}`\n\n"
+            text += (
+                f"{status_icon} *{hostname}*\n"
+                f"    `{ip}`\n"
+                f"    {vcpu} vCPU \\| {escape_md(ram)} \\| {escape_md(disk)}\n\n"
+            )
 
             btn_name = (
                 vm["hostname"][:15] + ".."
@@ -287,15 +305,30 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ip = escape_md(vm["ipv4"] or "No IP")
         escaped_vpsid = escape_md(vpsid)
 
+        vcpu = vm.get("vcpu", 0)
+        ram = format_size(vm.get("ram", 0))
+        disk = format_size(vm.get("disk", 0))
+        bandwidth = format_bandwidth(vm.get("bandwidth", 0))
+        used_bw = format_bandwidth(vm.get("used_bandwidth", 0))
+        os_name = escape_md(vm.get("os", "Unknown"))
+        virt = escape_md(vm.get("virt", "Unknown"))
+
         text = (
             f"*{hostname}*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "Detailed information about this virtual machine\\.\n\n"
-            f"*API:* `{escaped_api_name}`\n"
             f"*Status:* {status_icon} {status_text}\n"
-            f"*IP Address:* `{ip}`\n"
-            f"*VPS ID:* `{escaped_vpsid}`\n\n"
-            "_Click Refresh to update the status\\._" + FOOTER
+            f"*VPS ID:* `{escaped_vpsid}`\n"
+            f"*API:* `{escaped_api_name}`\n\n"
+            "*Network*\n"
+            f"IP Address: `{ip}`\n"
+            f"Bandwidth: {escape_md(used_bw)} / {escape_md(bandwidth)}\n\n"
+            "*Resources*\n"
+            f"vCPU: {vcpu} Core\\(s\\)\n"
+            f"RAM: {escape_md(ram)}\n"
+            f"Storage: {escape_md(disk)}\n\n"
+            "*System*\n"
+            f"OS: {os_name}\n"
+            f"Virtualization: {virt}" + FOOTER
         )
 
         keyboard = [
