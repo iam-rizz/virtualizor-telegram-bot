@@ -8,6 +8,26 @@ from .base import auth_check, get_nav_buttons, chunk_buttons, BTN_BACK, FOOTER
 
 TITLE_VM = "*Virtual Machines*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
 
+OS_MAP = {
+    "almalinux-8-x86_64": "AlmaLinux 8",
+    "almalinux-8.8-x86_64": "AlmaLinux 8.8",
+    "almalinux-9-x86_64": "AlmaLinux 9",
+    "centos-7-x86_64": "CentOS 7",
+    "debian-10.0-x86_64": "Debian 10",
+    "debian-11.0-x86_64": "Debian 11",
+    "debian-12-x86_64": "Debian 12",
+    "debian-13-x86_64": "Debian 13",
+    "ubuntu-20.04-x86_64": "Ubuntu 20.04",
+    "ubuntu-22.04-x86_64": "Ubuntu 22.04",
+    "ubuntu-24.04-x86_64": "Ubuntu 24.04",
+}
+
+
+def get_os_name(os_raw: str) -> str:
+    if not os_raw:
+        return "N/A"
+    return OS_MAP.get(os_raw, os_raw)
+
 
 def escape_md(text: str) -> str:
     chars = [
@@ -35,16 +55,45 @@ def escape_md(text: str) -> str:
     return text
 
 
-def format_size(mb: int) -> str:
-    if mb >= 1024:
-        return f"{mb / 1024:.1f} GB"
-    return f"{mb} MB"
-
-
-def format_bandwidth(gb: float) -> str:
+def format_size(gb) -> str:
+    try:
+        gb = float(gb)
+    except (ValueError, TypeError):
+        return "0 GB"
     if gb >= 1024:
         return f"{gb / 1024:.1f} TB"
     return f"{gb:.1f} GB"
+
+
+def format_ram(mb) -> str:
+    try:
+        mb = float(mb)
+    except (ValueError, TypeError):
+        return "0 GB"
+    return f"{mb / 1024:.2f} GB"
+
+
+def format_bandwidth(gb) -> str:
+    try:
+        gb = float(gb)
+    except (ValueError, TypeError):
+        return "0 GB"
+    if gb >= 1024:
+        return f"{gb / 1024:.1f} TB"
+    return f"{gb:.1f} GB"
+
+
+def progress_bar(used, total, length: int = 10) -> str:
+    try:
+        used = float(used)
+        total = float(total)
+    except (ValueError, TypeError):
+        return "░" * length
+    if total <= 0:
+        return "░" * length
+    percent = min(used / total, 1.0)
+    filled = int(length * percent)
+    return "█" * filled + "░" * (length - filled)
 
 
 async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -156,22 +205,29 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"*API:* `{escaped_api_name}`\n\n"
             "Select a VM to view details\\.\n"
-            "Status: ● Running  ○ Stopped\n\n"
+            "● Running  ○ Stopped  ◌ Suspended\n\n"
         )
 
         buttons = []
         for vm in vms:
-            status_icon = "●" if vm["status"] == "running" else "○"
+            if vm["status"] == "running":
+                status_icon = "●"
+            elif vm["status"] == "suspended":
+                status_icon = "◌"
+            else:
+                status_icon = "○"
             hostname = escape_md(vm["hostname"])
             ip = escape_md(vm["ipv4"] or "No IP")
             vcpu = vm.get("vcpu", 0)
-            ram = format_size(vm.get("ram", 0))
+            ram = format_ram(vm.get("ram", 0))
             disk = format_size(vm.get("disk", 0))
+            sys_os = escape_md(get_os_name(vm.get("os", "")))
 
             text += (
                 f"{status_icon} *{hostname}*\n"
                 f"    `{ip}`\n"
-                f"    {vcpu} vCPU \\| {escape_md(ram)} \\| {escape_md(disk)}\n\n"
+                f"    {sys_os}\n"
+                f"    {vcpu} vCPU \\| {escape_md(ram)} RAM \\| {escape_md(disk)} Storage\n\n"
             )
 
             btn_name = (
@@ -299,19 +355,46 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        status_text = "Running" if vm["status"] == "running" else "Stopped"
-        status_icon = "●" if vm["status"] == "running" else "○"
+        stats = api.get_vm_stats(vpsid)
+
+        if vm["status"] == "running":
+            status_text = "Running"
+            status_icon = "●"
+        elif vm["status"] == "suspended":
+            status_text = "Suspended"
+            status_icon = "◌"
+        else:
+            status_text = "Stopped"
+            status_icon = "○"
+
         hostname = escape_md(vm["hostname"])
-        ip = escape_md(vm["ipv4"] or "No IP")
+        ipv4 = escape_md(vm["ipv4"]) if vm["ipv4"] else "N/A"
+        ipv6 = escape_md(vm["ipv6"]) if vm.get("ipv6") else "N/A"
         escaped_vpsid = escape_md(vpsid)
 
         vcpu = vm.get("vcpu", 0)
-        ram = format_size(vm.get("ram", 0))
-        disk = format_size(vm.get("disk", 0))
-        bandwidth = format_bandwidth(vm.get("bandwidth", 0))
-        used_bw = format_bandwidth(vm.get("used_bandwidth", 0))
-        os_name = escape_md(vm.get("os", "Unknown"))
-        virt = escape_md(vm.get("virt", "Unknown"))
+        ram_total = stats.get("ram_total", 0) or vm.get("ram", 0)
+        ram_used = stats.get("ram_used", 0)
+        disk_total = stats.get("disk_total", 0) or vm.get("disk", 0)
+        disk_used = stats.get("disk_used", 0)
+        bandwidth_total = stats.get("bandwidth_total", 0) or vm.get("bandwidth", 0)
+        bandwidth_used = stats.get("bandwidth_used", 0) or vm.get("used_bandwidth", 0)
+        nw_rules = stats.get("nw_rules", 0)
+        os_name = escape_md(get_os_name(vm.get("os", "")))
+        virt = escape_md(vm.get("virt", "")) if vm.get("virt") else "N/A"
+
+        bw_bar = progress_bar(bandwidth_used, bandwidth_total)
+        ram_bar = progress_bar(ram_used, ram_total)
+        disk_bar = progress_bar(disk_used, disk_total)
+
+        ram_used_str = escape_md(format_ram(ram_used)) if ram_used else "N/A"
+        ram_total_str = escape_md(format_ram(ram_total))
+        disk_used_str = escape_md(format_size(disk_used)) if disk_used else "N/A"
+        disk_total_str = escape_md(format_size(disk_total))
+        bw_used_str = (
+            escape_md(format_bandwidth(bandwidth_used)) if bandwidth_used else "N/A"
+        )
+        bw_total_str = escape_md(format_bandwidth(bandwidth_total))
 
         text = (
             f"*{hostname}*\n"
@@ -320,15 +403,23 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*VPS ID:* `{escaped_vpsid}`\n"
             f"*API:* `{escaped_api_name}`\n\n"
             "*Network*\n"
-            f"IP Address: `{ip}`\n"
-            f"Bandwidth: {escape_md(used_bw)} / {escape_md(bandwidth)}\n\n"
+            "━━━━━━━\n"
+            f"*IPv4:* `{ipv4}`\n"
+            f"*IPv6:* `{ipv6}`\n"
+            f"*Bandwidth:* `{bw_bar}`\n"
+            f"{bw_used_str} / {bw_total_str}\n"
+            f"*Port Forwarding:* {nw_rules} rule\\(s\\)\n\n"
             "*Resources*\n"
-            f"vCPU: {vcpu} Core\\(s\\)\n"
-            f"RAM: {escape_md(ram)}\n"
-            f"Storage: {escape_md(disk)}\n\n"
+            "━━━━━━━━\n"
+            f"*vCPU:* {vcpu} Core\\(s\\)\n\n"
+            f"*RAM:* `{ram_bar}`\n"
+            f"{ram_used_str} / {ram_total_str}\n\n"
+            f"*Disk:* `{disk_bar}`\n"
+            f"{disk_used_str} / {disk_total_str}\n\n"
             "*System*\n"
-            f"OS: {os_name}\n"
-            f"Virtualization: {virt}" + FOOTER
+            "━━━━━━\n"
+            f"*OS:* {os_name}\n"
+            f"*Virtualization:* {virt}" + FOOTER
         )
 
         keyboard = [

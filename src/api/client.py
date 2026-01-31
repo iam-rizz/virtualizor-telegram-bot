@@ -70,17 +70,27 @@ class VirtualizorAPI:
         for vpsid, data in vs_data.items():
             ips = data.get("ips", {})
             ipv4 = None
+            ipv6 = None
             for ip in ips.values():
-                if isinstance(ip, str) and "." in ip and ":" not in ip:
-                    ipv4 = ip
-                    break
+                if isinstance(ip, str):
+                    if ":" in ip and not ipv6:
+                        ipv6 = ip
+                    elif "." in ip and ":" not in ip and not ipv4:
+                        ipv4 = ip
+
+            status = "stopped"
+            if data.get("status") == 1:
+                status = "running"
+            elif data.get("suspended") and str(data.get("suspended")) not in ("0", ""):
+                status = "suspended"
 
             vms.append(
                 {
                     "vpsid": vpsid,
                     "hostname": data.get("hostname", ""),
                     "ipv4": ipv4,
-                    "status": "running" if data.get("status") == 1 else "stopped",
+                    "ipv6": ipv6,
+                    "status": status,
                     "vcpu": data.get("cores", 0),
                     "ram": data.get("ram", 0),
                     "disk": data.get("space", 0),
@@ -91,3 +101,50 @@ class VirtualizorAPI:
                 }
             )
         return vms
+
+    def get_vm_stats(self, vpsid: str) -> Dict[str, Any]:
+        stats = {
+            "ram_used": 0,
+            "ram_total": 0,
+            "disk_used": 0,
+            "disk_total": 0,
+            "bandwidth_used": 0,
+            "bandwidth_total": 0,
+            "nw_rules": 0,
+        }
+
+        try:
+            ram = self._request("ram", svs=vpsid)
+            if ram.get("ram"):
+                info = ram["ram"]
+                stats["ram_used"] = float(info.get("used", 0))
+                stats["ram_total"] = float(info.get("limit", 0))
+        except Exception:
+            pass
+
+        try:
+            disk = self._request("disk", svs=vpsid)
+            if disk.get("disk"):
+                info = disk["disk"]
+                stats["disk_used"] = float(info.get("used_gb", 0))
+                stats["disk_total"] = float(info.get("limit_gb", 0))
+        except Exception:
+            pass
+
+        try:
+            bw = self._request("bandwidth", svs=vpsid)
+            if bw.get("bandwidth"):
+                info = bw["bandwidth"]
+                stats["bandwidth_used"] = float(info.get("used_gb", 0))
+                stats["bandwidth_total"] = float(info.get("limit_gb", 0))
+        except Exception:
+            pass
+
+        try:
+            nw = self._request("managevdf", svs=vpsid)
+            if nw.get("haproxydata"):
+                stats["nw_rules"] = len(nw["haproxydata"])
+        except Exception:
+            pass
+
+        return stats
