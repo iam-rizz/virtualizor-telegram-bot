@@ -27,7 +27,13 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Interactive menus using inline keyboards
 - Markdown formatted messages
 - Multiple API profile support with SQLite storage
-- VM listing with status indicators
+- VM listing with specs (vCPU, RAM, Storage, OS)
+- VM status indicators (Running, Stopped, Suspended)
+- Detailed VM info with real-time resource usage:
+  - IPv4 and IPv6 addresses
+  - RAM, Disk, Bandwidth usage with progress bars
+  - Port forwarding rules count
+  - OS and virtualization type
 - Connection validation with detailed error messages
 - Colored console logging with startup banner
 - Auto-update notification with one-click update

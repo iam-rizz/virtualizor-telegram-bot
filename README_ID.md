@@ -27,7 +27,13 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Menu interaktif menggunakan inline keyboard
 - Pesan dengan format Markdown
 - Support multiple profil API dengan penyimpanan SQLite
-- Daftar VM dengan indikator status
+- Daftar VM dengan spesifikasi (vCPU, RAM, Storage, OS)
+- Indikator status VM (Running, Stopped, Suspended)
+- Detail VM dengan penggunaan resource real-time:
+  - Alamat IPv4 dan IPv6
+  - Penggunaan RAM, Disk, Bandwidth dengan progress bar
+  - Jumlah rule port forwarding
+  - OS dan tipe virtualisasi
 - Validasi koneksi dengan pesan error detail
 - Console logging berwarna dengan banner startup
 - Notifikasi auto-update dengan update sekali klik
