@@ -30,23 +30,28 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Daftar VM dengan indikator status
 - Validasi koneksi dengan pesan error detail
 - Console logging berwarna dengan banner startup
+- Notifikasi auto-update dengan update sekali klik
 
 ## Persyaratan
 
 - Python 3.10+
 - Token Bot Telegram (dari @BotFather)
 - Panel Virtualizor dengan akses API aktif
+- Ubuntu/Debian (diuji pada Ubuntu 22.04, Debian 12)
 
 ## Struktur Project
 
 ```
 virtualizor-telegram-bot/
 ├── main.py
+├── start.sh              # Script auto-setup dan start
+├── update.sh             # Script update dan restart
 ├── src/
 │   ├── bot.py
 │   ├── config.py
 │   ├── logger.py
 │   ├── version.py
+│   ├── updater.py
 │   ├── api/
 │   │   ├── client.py
 │   │   └── exceptions.py
@@ -61,7 +66,22 @@ virtualizor-telegram-bot/
 └── .env
 ```
 
-## Instalasi
+## Quick Start (Direkomendasikan)
+
+```bash
+git clone https://github.com/iam-rizz/virtualizor-telegram-bot.git
+cd virtualizor-telegram-bot
+chmod +x start.sh update.sh
+./start.sh
+```
+
+Script akan:
+1. Cek dan install dependency Python (python3, python3-venv, pip)
+2. Buat virtual environment dan install requirements
+3. Buat `.env` dari template (edit dengan kredensial Anda)
+4. Jalankan bot dengan PM2 (jika tersedia) atau screen
+
+## Instalasi Manual
 
 1. Clone repository:
 ```bash
@@ -71,9 +91,8 @@ cd virtualizor-telegram-bot
 
 2. Buat virtual environment:
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 3. Install dependencies:
@@ -84,6 +103,7 @@ pip install -r requirements.txt
 4. Buat file `.env`:
 ```bash
 cp .env.example .env
+nano .env
 ```
 
 5. Edit `.env` dengan kredensial Anda:
@@ -97,6 +117,16 @@ ALLOWED_USER_IDS=123456789,987654321
 python main.py
 ```
 
+## Update Bot
+
+### Via Telegram
+Ketika versi baru tersedia, tombol "Update Bot" akan muncul di menu utama. Klik untuk update dan restart otomatis.
+
+### Via Command Line
+```bash
+./update.sh
+```
+
 ## Konfigurasi
 
 | Variable | Deskripsi |
@@ -104,6 +134,32 @@ python main.py
 | BOT_TOKEN | Token bot Telegram dari @BotFather |
 | ALLOWED_USER_IDS | ID Telegram dipisah koma (contoh: 123456789,987654321) |
 | DATABASE_PATH | Path database SQLite (default: data/bot.db) |
+
+## Manajemen Proses
+
+### Dengan PM2 (Direkomendasikan)
+```bash
+# Lihat logs
+pm2 logs virtualizor-bot
+
+# Restart
+pm2 restart virtualizor-bot
+
+# Stop
+pm2 stop virtualizor-bot
+```
+
+### Dengan Screen
+```bash
+# Attach ke session
+screen -r virtualizor-bot
+
+# Detach
+Ctrl+A lalu D
+
+# Stop
+screen -S virtualizor-bot -X quit
+```
 
 ## Penggunaan
 
@@ -122,6 +178,8 @@ Struktur menu:
     - Pilih API (jika lebih dari satu)
     - List VMs
     - VM Details (status, IP, VPS ID)
+  - About
+  - Update Bot (jika tersedia)
 
 ## Mendapatkan Kredensial
 
@@ -135,30 +193,19 @@ Saat menambahkan API, Anda memerlukan:
 2. API Key (dari Virtualizor Admin Panel > Configuration > API Credentials)
 3. API Password (dari lokasi yang sama)
 
-## Output Console
+## Diuji Pada
 
-Bot menampilkan log berwarna dengan banner startup:
-```
-╔═══════════════════════════════════════════╗
-║   Virtualizor Telegram Bot v1.0.4         ║
-║   ─────────────────────────────────────   ║
-║   VM Management via Telegram              ║
-║   github.com/iam-rizz                     ║
-╚═══════════════════════════════════════════╝
-
-22:30:15    INFO bot          Starting bot...
-22:30:15    INFO bot          Configuration loaded
-22:30:15    INFO bot          Authorized users: [123456789, 987654321]
-22:30:16    INFO bot          Database initialized
-22:30:16    INFO bot          Bot is ready and listening for updates
-```
+- Ubuntu 22.04 LTS
+- Ubuntu 24.04 LTS
+- Debian 11
+- Debian 12
 
 ## Keamanan
 
 - Akses single user saja
 - Password API disimpan ter-encode
 - Pesan user otomatis dihapus
-- Verifikasi SSL dinonaktifkan untuk sertifikat self-signed
+- Koneksi API wajib HTTPS
 
 ## Fitur yang Direncanakan
 

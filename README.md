@@ -30,23 +30,28 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - VM listing with status indicators
 - Connection validation with detailed error messages
 - Colored console logging with startup banner
+- Auto-update notification with one-click update
 
 ## Requirements
 
 - Python 3.10+
 - Telegram Bot Token (from @BotFather)
 - Virtualizor panel with API access enabled
+- Ubuntu/Debian (tested on Ubuntu 22.04, Debian 12/13)
 
 ## Project Structure
 
 ```
 virtualizor-telegram-bot/
 ├── main.py
+├── start.sh              # Auto-setup and start script
+├── update.sh             # Update and restart script
 ├── src/
 │   ├── bot.py
 │   ├── config.py
 │   ├── logger.py
 │   ├── version.py
+│   ├── updater.py
 │   ├── api/
 │   │   ├── client.py
 │   │   └── exceptions.py
@@ -61,7 +66,22 @@ virtualizor-telegram-bot/
 └── .env
 ```
 
-## Installation
+## Quick Start (Recommended)
+
+```bash
+git clone https://github.com/iam-rizz/virtualizor-telegram-bot.git
+cd virtualizor-telegram-bot
+chmod +x start.sh update.sh
+./start.sh
+```
+
+The script will:
+1. Check and install Python dependencies (python3, python3-venv, pip)
+2. Create virtual environment and install requirements
+3. Create `.env` from template (edit with your credentials)
+4. Start bot with PM2 (if available) or screen
+
+## Manual Installation
 
 1. Clone the repository:
 ```bash
@@ -71,9 +91,8 @@ cd virtualizor-telegram-bot
 
 2. Create virtual environment:
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 3. Install dependencies:
@@ -84,6 +103,7 @@ pip install -r requirements.txt
 4. Create `.env` file:
 ```bash
 cp .env.example .env
+nano .env
 ```
 
 5. Edit `.env` with your credentials:
@@ -97,6 +117,16 @@ ALLOWED_USER_IDS=123456789,987654321
 python main.py
 ```
 
+## Update Bot
+
+### Via Telegram
+When a new version is available, an "Update Bot" button will appear in the main menu. Click it to automatically update and restart.
+
+### Via Command Line
+```bash
+./update.sh
+```
+
 ## Configuration
 
 | Variable | Description |
@@ -104,6 +134,32 @@ python main.py
 | BOT_TOKEN | Telegram bot token from @BotFather |
 | ALLOWED_USER_IDS | Comma-separated Telegram user IDs (e.g., 123456789,987654321) |
 | DATABASE_PATH | SQLite database path (default: data/bot.db) |
+
+## Process Management
+
+### With PM2 (Recommended)
+```bash
+# View logs
+pm2 logs virtualizor-bot
+
+# Restart
+pm2 restart virtualizor-bot
+
+# Stop
+pm2 stop virtualizor-bot
+```
+
+### With Screen
+```bash
+# Attach to session
+screen -r virtualizor-bot
+
+# Detach
+Ctrl+A then D
+
+# Stop
+screen -S virtualizor-bot -X quit
+```
 
 ## Usage
 
@@ -122,6 +178,8 @@ Menu structure:
     - Select API (if multiple)
     - List VMs
     - VM Details (status, IP, VPS ID)
+  - About
+  - Update Bot (when available)
 
 ## Getting Credentials
 
@@ -135,30 +193,19 @@ When adding an API, you need:
 2. API Key (from Virtualizor Admin Panel > Configuration > API Credentials)
 3. API Password (from the same location)
 
-## Console Output
+## Tested On
 
-The bot displays colored logs with a startup banner:
-```
-╔═══════════════════════════════════════════╗
-║   Virtualizor Telegram Bot v1.0.4         ║
-║   ─────────────────────────────────────   ║
-║   VM Management via Telegram              ║
-║   github.com/iam-rizz                     ║
-╚═══════════════════════════════════════════╝
-
-22:30:15    INFO bot          Starting bot...
-22:30:15    INFO bot          Configuration loaded
-22:30:15    INFO bot          Authorized users: [123456789, 987654321]
-22:30:16    INFO bot          Database initialized
-22:30:16    INFO bot          Bot is ready and listening for updates
-```
+- Ubuntu 22.04 LTS
+- Ubuntu 24.04 LTS
+- Debian 12
+- Debian 13
 
 ## Security
 
 - Single user access only
 - API passwords stored encoded
 - User messages auto-deleted
-- SSL verification disabled for self-signed certificates
+- HTTPS required for API connections
 
 ## Planned Features
 

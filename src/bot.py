@@ -20,6 +20,7 @@ from src.handlers import (
     show_main_menu,
     show_api_menu,
     show_about,
+    bot_update,
     show_vms_menu,
     api_add_start,
     input_name,
@@ -90,6 +91,7 @@ def create_application() -> Application:
     application.add_handler(CallbackQueryHandler(show_api_menu, pattern="^menu_api$"))
     application.add_handler(CallbackQueryHandler(show_vms_menu, pattern="^menu_vms$"))
     application.add_handler(CallbackQueryHandler(show_about, pattern="^menu_about$"))
+    application.add_handler(CallbackQueryHandler(bot_update, pattern="^bot_update$"))
 
     application.add_handler(CallbackQueryHandler(api_list, pattern="^api_list$"))
     application.add_handler(

@@ -1,4 +1,4 @@
-from .base import start, show_main_menu, show_api_menu, show_about
+from .base import start, show_main_menu, show_api_menu, show_about, bot_update
 from .api_management import (
     api_add_start,
     input_name,
@@ -28,6 +28,7 @@ __all__ = [
     "show_main_menu",
     "show_api_menu",
     "show_about",
+    "bot_update",
     "show_vms_menu",
     "api_add_start",
     "input_name",

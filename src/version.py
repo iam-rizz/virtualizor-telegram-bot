@@ -1,4 +1,4 @@
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __author__ = "Rizz"
 __github__ = "https://github.com/iam-rizz/virtualizor-telegram-bot"
 __telegram__ = "https://t.me/rizzid03"

@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 
 from src.config import ALLOWED_USER_IDS
 from src.version import __version__, __author__, __github__, __telegram__, __forum__
+from src.updater import check_for_updates, run_update
 
 BTN_BACK = "< Back"
 BTN_HOME = "Home"
@@ -27,7 +28,15 @@ def get_nav_buttons(back: str = None, home: bool = True) -> list:
     return buttons
 
 
-def get_main_menu() -> InlineKeyboardMarkup:
+async def get_dynamic_footer() -> str:
+    update_info = await check_for_updates()
+    if update_info["update_available"]:
+        return f"\n\n─────────────────────\n`v{__version__}` _\\(v{update_info['latest']} available\\)_"
+    return f"\n\n─────────────────────\n`v{__version__}` \\| by _[{__author__}](tg://user?id=7898378667)_"
+
+
+async def get_main_menu() -> InlineKeyboardMarkup:
+    update_info = await check_for_updates()
     keyboard = [
         [
             InlineKeyboardButton("API Management", callback_data="menu_api"),
@@ -35,6 +44,14 @@ def get_main_menu() -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("About", callback_data="menu_about")],
     ]
+    if update_info["update_available"]:
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"Update Bot (v{update_info['latest']})", callback_data="bot_update"
+                )
+            ]
+        )
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -74,6 +91,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await delete_user_message(update)
+    footer = await get_dynamic_footer()
 
     text = (
         "*Virtualizor Bot*\n"
@@ -85,11 +103,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*Getting Started:*\n"
         "1\\. Add your Virtualizor API credentials\n"
         "2\\. View and manage your VMs\n\n"
-        "Select an option below to continue\\." + FOOTER
+        "Select an option below to continue\\." + footer
     )
 
     await update.message.reply_text(
-        text, reply_markup=get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
+        text, reply_markup=await get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
     )
 
 
@@ -100,6 +118,8 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not auth_check(query.from_user.id):
         return
 
+    footer = await get_dynamic_footer()
+
     text = (
         "*Virtualizor Bot*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -108,11 +128,11 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Add, remove, or set default API credentials\\.\n\n"
         "*Virtual Machines* \\- View and monitor all VMs from your "
         "connected Virtualizor panels\\.\n\n"
-        "Select an option to continue\\." + FOOTER
+        "Select an option to continue\\." + footer
     )
 
     await query.edit_message_text(
-        text, reply_markup=get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
+        text, reply_markup=await get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
     )
 
 
@@ -166,4 +186,48 @@ async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True,
+    )
+
+
+async def bot_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not auth_check(query.from_user.id):
+        return
+
+    text = (
+        "*Update Bot*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "_Starting update process\\.\\.\\._\n\n"
+        "The bot will pull the latest changes and restart\\.\n"
+        "Please wait a moment\\."
+    )
+
+    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+
+    result = run_update()
+
+    if result["success"]:
+        text = (
+            "*Update Bot*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Update initiated\\.\n\n"
+            "The bot will restart shortly\\.\n"
+            "Use /start after restart\\."
+        )
+    else:
+        text = (
+            "*Update Bot*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"_Update failed:_ `{result['message']}`\n\n"
+            "Please run `\\./update\\.sh` manually\\." + FOOTER
+        )
+
+    keyboard = [[InlineKeyboardButton(BTN_HOME, callback_data="menu_main")]]
+
+    await query.edit_message_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode=ParseMode.MARKDOWN_V2,
     )

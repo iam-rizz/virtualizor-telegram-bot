@@ -145,7 +145,7 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             f"*API:* `{escaped_api_name}`\n\n"
             "Showing all VMs from this Virtualizor panel\\.\n"
             "Select a VM to view details\\.\n\n"
-            "● Running  ○ Stopped\n\n"
+            "Status: ● Running  ○ Stopped\n\n"
         )
 
         buttons = []
