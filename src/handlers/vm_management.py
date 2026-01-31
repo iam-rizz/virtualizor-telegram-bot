@@ -116,8 +116,9 @@ async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: dict):
     api_name = api_config["name"]
+    escaped_api_name = escape_md(api_name)
 
-    text = TITLE_VM + f"*API:* `{api_name}`\n\n_Loading VMs\\.\\.\\._"
+    text = TITLE_VM + f"*API:* `{escaped_api_name}`\n\n_Loading VMs\\.\\.\\._"
     await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
@@ -126,7 +127,7 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
 
         if not vms:
             text = (
-                TITLE_VM + f"*API:* `{api_name}`\n\n"
+                TITLE_VM + f"*API:* `{escaped_api_name}`\n\n"
                 "_No VMs found\\._\n\n"
                 "This Virtualizor panel has no virtual machines configured\\." + FOOTER
             )
@@ -141,7 +142,7 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
         text = (
             f"*Virtual Machines* \\({len(vms)}\\)\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"*API:* `{api_name}`\n\n"
+            f"*API:* `{escaped_api_name}`\n\n"
             "Showing all VMs from this Virtualizor panel\\.\n"
             "Select a VM to view details\\.\n\n"
             "● Running  ○ Stopped\n\n"
@@ -245,6 +246,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     api_name = parts[1]
     vpsid = parts[2]
+    escaped_api_name = escape_md(api_name)
 
     api_config = await db.get_api(api_name)
     if not api_config:
@@ -288,7 +290,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*{hostname}*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             "Detailed information about this virtual machine\\.\n\n"
-            f"*API:* `{api_name}`\n"
+            f"*API:* `{escaped_api_name}`\n"
             f"*Status:* {status_icon} {status_text}\n"
             f"*IP Address:* `{ip}`\n"
             f"*VPS ID:* `{vpsid}`\n\n"

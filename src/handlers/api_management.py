@@ -338,8 +338,9 @@ async def api_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     for api in apis:
         default = " _\\[default\\]_" if api["is_default"] else ""
+        escaped_name = escape_md(api["name"])
         escaped_url = escape_md(api["api_url"])
-        text += f"*{api['name']}*{default}\n`{escaped_url}`\n\n"
+        text += f"*{escaped_name}*{default}\n`{escaped_url}`\n\n"
 
     text += FOOTER
 
