@@ -47,7 +47,7 @@ def setup_logger():
 def print_banner():
     banner = f"""
     \033[36m╔═══════════════════════════════════════════╗
-    ║\033[0m   \033[1mVirtualizor Telegram Bot v{__version__}\033[0m        \033[36m║
+    ║\033[0m   \033[1mVirtualizor Telegram Bot v{__version__}\033[0m        \033[36m ║
     ║\033[0m   ─────────────────────────────────────   \033[36m║
     ║\033[0m   VM Management via Telegram              \033[36m║
     ║\033[0m   github.com/iam-rizz                     \033[36m║

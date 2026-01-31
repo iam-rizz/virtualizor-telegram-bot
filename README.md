@@ -140,7 +140,7 @@ When adding an API, you need:
 The bot displays colored logs with a startup banner:
 ```
 ╔═══════════════════════════════════════════╗
-║   Virtualizor Telegram Bot v1.0.1         ║
+║   Virtualizor Telegram Bot v1.0.4         ║
 ║   ─────────────────────────────────────   ║
 ║   VM Management via Telegram              ║
 ║   github.com/iam-rizz                     ║
@@ -148,7 +148,7 @@ The bot displays colored logs with a startup banner:
 
 22:30:15    INFO bot          Starting bot...
 22:30:15    INFO bot          Configuration loaded
-22:30:15    INFO bot          Authorized user: 123456789
+22:30:15    INFO bot          Authorized users: [123456789, 987654321]
 22:30:16    INFO bot          Database initialized
 22:30:16    INFO bot          Bot is ready and listening for updates
 ```

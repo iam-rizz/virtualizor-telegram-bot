@@ -1,11 +1,14 @@
 import warnings
+import traceback
 
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
     ConversationHandler,
     MessageHandler,
+    ContextTypes,
     filters,
 )
 
@@ -39,6 +42,11 @@ from src.handlers import (
 )
 
 logger = setup_logger()
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Exception: {context.error}")
+    logger.error(traceback.format_exc())
 
 
 async def post_init(application: Application):
@@ -84,14 +92,24 @@ def create_application() -> Application:
     application.add_handler(CallbackQueryHandler(show_about, pattern="^menu_about$"))
 
     application.add_handler(CallbackQueryHandler(api_list, pattern="^api_list$"))
-    application.add_handler(CallbackQueryHandler(api_delete_start, pattern="^api_delete$"))
-    application.add_handler(CallbackQueryHandler(api_delete_confirm, pattern="^apidel_"))
-    application.add_handler(CallbackQueryHandler(api_default_start, pattern="^api_default$"))
-    application.add_handler(CallbackQueryHandler(api_default_confirm, pattern="^apidef_"))
+    application.add_handler(
+        CallbackQueryHandler(api_delete_start, pattern="^api_delete$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(api_delete_confirm, pattern="^apidel_")
+    )
+    application.add_handler(
+        CallbackQueryHandler(api_default_start, pattern="^api_default$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(api_default_confirm, pattern="^apidef_")
+    )
 
     application.add_handler(CallbackQueryHandler(vm_select_api, pattern="^vmapi_"))
     application.add_handler(CallbackQueryHandler(vm_list, pattern="^vm_list$"))
     application.add_handler(CallbackQueryHandler(vm_detail, pattern="^vm_"))
+
+    application.add_error_handler(error_handler)
 
     return application
 
