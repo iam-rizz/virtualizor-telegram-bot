@@ -79,6 +79,11 @@ else
     if ! command -v screen &> /dev/null; then
         echo -e "${YELLOW}[!] screen not found. Installing...${NC}"
         sudo apt update && sudo apt install -y screen
+        if ! command -v screen &> /dev/null; then
+            echo -e "${RED}[!] Failed to install screen${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}[+] screen installed${NC}"
     fi
     
     echo -e "${GREEN}[+] Using screen${NC}"
