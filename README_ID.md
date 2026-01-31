@@ -37,7 +37,7 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Python 3.10+
 - Token Bot Telegram (dari @BotFather)
 - Panel Virtualizor dengan akses API aktif
-- Ubuntu/Debian (diuji pada Ubuntu 22.04, Debian 12)
+- Ubuntu/Debian (diuji pada Ubuntu 22.04, Debian 12/13)
 
 ## Struktur Project
 
@@ -197,8 +197,8 @@ Saat menambahkan API, Anda memerlukan:
 
 - Ubuntu 22.04 LTS
 - Ubuntu 24.04 LTS
-- Debian 11
 - Debian 12
+- Debian 13
 
 ## Keamanan
 
