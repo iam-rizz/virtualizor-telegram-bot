@@ -285,6 +285,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status_icon = "●" if vm["status"] == "running" else "○"
         hostname = escape_md(vm["hostname"])
         ip = escape_md(vm["ipv4"] or "No IP")
+        escaped_vpsid = escape_md(vpsid)
 
         text = (
             f"*{hostname}*\n"
@@ -293,7 +294,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*API:* `{escaped_api_name}`\n"
             f"*Status:* {status_icon} {status_text}\n"
             f"*IP Address:* `{ip}`\n"
-            f"*VPS ID:* `{vpsid}`\n\n"
+            f"*VPS ID:* `{escaped_vpsid}`\n\n"
             "_Click Refresh to update the status\\._" + FOOTER
         )
 

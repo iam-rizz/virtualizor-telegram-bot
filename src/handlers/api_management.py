@@ -101,7 +101,7 @@ async def input_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if await db.api_exists(name):
         text = (
-            TITLE_ADD_API + f"API `{name}` already exists\\.\n"
+            TITLE_ADD_API + f"API `{escape_md(name)}` already exists\\.\n"
             "Please choose a different name for this connection\\." + FOOTER
         )
         await bot_msg.edit_text(
@@ -110,9 +110,10 @@ async def input_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return INPUT_NAME
 
     context.user_data["api_name"] = name
+    escaped_name = escape_md(name)
     text = (
         TITLE_ADD_API + f"Step 2 of 4: API URL\n\n"
-        f"*Name:* `{name}`\n\n"
+        f"*Name:* `{escaped_name}`\n\n"
         "Enter your Virtualizor panel URL\\.\n"
         "Include the full path with port number\\.\n\n"
         "_Example:_ `https://panel\\.example\\.com:4085/index\\.php`" + FOOTER
@@ -129,10 +130,11 @@ async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     bot_msg = context.user_data.get("bot_msg")
     name = context.user_data.get("api_name")
+    escaped_name = escape_md(name)
 
     if not url.startswith("https://"):
         text = (
-            TITLE_ADD_API + f"*Name:* `{name}`\n\n"
+            TITLE_ADD_API + f"*Name:* `{escaped_name}`\n\n"
             "URL must start with `https://` for security\\.\n"
             "Please enter a valid HTTPS URL\\." + FOOTER
         )
@@ -145,7 +147,7 @@ async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_url = escape_md(url)
     text = (
         TITLE_ADD_API + f"Step 3 of 4: API Key\n\n"
-        f"*Name:* `{name}`\n*URL:* `{escaped_url}`\n\n"
+        f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n\n"
         "Enter your API Key from Virtualizor panel\\.\n"
         "Find it in: Configuration \\> API Credentials" + FOOTER
     )
@@ -162,11 +164,12 @@ async def input_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_msg = context.user_data.get("bot_msg")
     name = context.user_data.get("api_name")
     url = context.user_data.get("api_url")
+    escaped_name = escape_md(name)
+    escaped_url = escape_md(url)
 
     if len(api_key) < 10:
-        escaped_url = escape_md(url)
         text = (
-            TITLE_ADD_API + f"*Name:* `{name}`\n*URL:* `{escaped_url}`\n\n"
+            TITLE_ADD_API + f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n\n"
             "API Key seems too short\\.\n"
             "Please enter a valid API Key from your Virtualizor panel\\." + FOOTER
         )
@@ -176,10 +179,9 @@ async def input_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return INPUT_KEY
 
     context.user_data["api_key"] = api_key
-    escaped_url = escape_md(url)
     text = (
         TITLE_ADD_API + f"Step 4 of 4: API Password\n\n"
-        f"*Name:* `{name}`\n*URL:* `{escaped_url}`\n*Key:* `{api_key[:8]}\\.\\.\\.`\n\n"
+        f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n*Key:* `{api_key[:8]}\\.\\.\\.`\n\n"
         "Enter your API Password\\.\n"
         "This is the password associated with your API Key\\." + FOOTER
     )
@@ -198,11 +200,12 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("api_url")
     key = context.user_data.get("api_key")
 
+    escaped_name = escape_md(name)
     escaped_url = escape_md(url)
 
     if len(api_pass) < 5:
         text = (
-            TITLE_ADD_API + f"*Name:* `{name}`\n*URL:* `{escaped_url}`\n\n"
+            TITLE_ADD_API + f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n\n"
             "Password seems too short\\.\n"
             "Please enter a valid API Password\\." + FOOTER
         )
@@ -212,7 +215,7 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return INPUT_PASS
 
     text = (
-        TITLE_ADD_API + f"*Name:* `{name}`\n*URL:* `{escaped_url}`\n\n"
+        TITLE_ADD_API + f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n\n"
         "_Validating credentials\\.\\.\\._"
     )
     await bot_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -228,7 +231,7 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*API Added Successfully*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             "Your API connection has been saved\\.\n\n"
-            f"*Name:* `{name}`\n"
+            f"*Name:* `{escaped_name}`\n"
             f"*URL:* `{escaped_url}`\n"
             f"*VMs Found:* `{result['vm_count']}`\n\n"
             "You can now view your VMs from the main menu\\." + FOOTER
@@ -405,12 +408,13 @@ async def api_delete_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     name = query.data.replace("apidel_", "")
+    escaped_name = escape_md(name)
     success = await db.delete_api(name)
 
     if success:
-        msg = f"API `{name}` has been deleted successfully\\."
+        msg = f"API `{escaped_name}` has been deleted successfully\\."
     else:
-        msg = f"API `{name}` was not found\\."
+        msg = f"API `{escaped_name}` was not found\\."
 
     text = f"*Delete API*\n" "━━━━━━━━━━━━━━━━━━━━━\n\n" f"{msg}" + FOOTER
     keyboard = [get_nav_buttons("menu_api", True)]
@@ -476,12 +480,13 @@ async def api_default_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     name = query.data.replace("apidef_", "")
+    escaped_name = escape_md(name)
     success = await db.set_default(name)
 
     if success:
-        msg = f"`{name}` is now your default API connection\\."
+        msg = f"`{escaped_name}` is now your default API connection\\."
     else:
-        msg = f"API `{name}` was not found\\."
+        msg = f"API `{escaped_name}` was not found\\."
 
     text = f"*Set Default*\n" "━━━━━━━━━━━━━━━━━━━━━\n\n" f"{msg}" + FOOTER
     keyboard = [get_nav_buttons("menu_api", True)]
