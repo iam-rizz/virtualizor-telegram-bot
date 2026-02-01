@@ -77,8 +77,8 @@ async def api_add_start(callback: CallbackQuery, state: FSMContext):
     text = (
         TITLE_ADD_API + "Step 1 of 4: API Name\n\n"
         "Enter a unique name to identify this API connection\\.\n"
-        "Use lowercase letters, numbers, hyphens or underscores\\.\n\n"
-        "_Example:_ `main\\-server`" + FOOTER
+        "You can use letters, numbers, spaces, hyphens or underscores\\.\n\n"
+        "_Examples:_ `Main Server`, `NAT Panel 01`, `Backup\\-VPS`" + FOOTER
     )
     await callback.message.edit_text(text, reply_markup=get_cancel_keyboard())
     await state.set_state(APIForm.name)
@@ -88,7 +88,7 @@ async def api_add_start(callback: CallbackQuery, state: FSMContext):
 async def input_name(message: Message, state: FSMContext):
     await delete_user_message(message)
 
-    name = message.text.strip().lower()
+    name = message.text.strip()
     data = await state.get_data()
     bot_msg_id = data.get("bot_msg_id")
 
@@ -105,10 +105,23 @@ async def input_name(message: Message, state: FSMContext):
         )
         return
 
-    if not name.replace("-", "").replace("_", "").isalnum():
+    if len(name) > 50:
+        text = (
+            TITLE_ADD_API + "Name is too long \\(max 50 characters\\)\\.\n"
+            "Please enter a shorter name\\." + FOOTER
+        )
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
+        )
+        return
+
+    if not all(c.isalnum() or c in " -_" for c in name):
         text = (
             TITLE_ADD_API
-            + "Name can only contain letters, numbers, hyphens and underscores\\.\n"
+            + "Name can only contain letters, numbers, spaces, hyphens and underscores\\.\n"
             "Please enter a valid name\\." + FOOTER
         )
         await message.bot.edit_message_text(
@@ -119,7 +132,7 @@ async def input_name(message: Message, state: FSMContext):
         )
         return
 
-    if await db.api_exists(name):
+    if await db.api_exists_case_insensitive(name):
         text = (
             TITLE_ADD_API + f"API `{escape_md(name)}` already exists\\.\n"
             "Please choose a different name for this connection\\." + FOOTER

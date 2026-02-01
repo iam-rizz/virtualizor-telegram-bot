@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1] - 2026-02-01
+
+### Added
+- Case-insensitive API name uniqueness check
+- Support for spaces in API names
+- Maximum length validation (50 characters) for API names
+
+### Changed
+- API names now preserve original case (e.g., "Main Server" instead of "main-server")
+- Updated name validation to allow spaces, letters, numbers, hyphens, and underscores
+- Improved user-friendly display names throughout the interface
+
+### Improved
+- More natural and professional API name display
+- Better validation messages with clearer examples
+- Enhanced user experience for API naming
+
 ## [2.0] - 2026-02-01
 
 ### Changed
