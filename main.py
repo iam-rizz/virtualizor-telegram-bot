@@ -1,6 +1,5 @@
 """Entry point."""
 
-import sys
 import argparse
 from src.bot import run
 
