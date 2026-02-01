@@ -32,6 +32,8 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Menu interaktif menggunakan inline keyboard
 - Pesan dengan format Markdown
 - Support multiple profil API dengan penyimpanan SQLite
+- **Batch Add APIs** - Tambah banyak koneksi sekaligus
+- Nama API user-friendly dengan spasi dan case preservation
 - Daftar VM dengan spesifikasi (vCPU, RAM, Storage, OS)
 - Indikator status VM (Running, Stopped, Suspended)
 - Detail VM dengan penggunaan resource real-time:
@@ -50,8 +52,22 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Panel Virtualizor dengan akses API aktif
 - Ubuntu/Debian (diuji pada Ubuntu 22.04, Debian 12/13)
 
-## Yang Baru di v2.0
+## Yang Baru di v2.2
 
+- **Batch Add APIs** - Tambah banyak API sekaligus
+- Dukungan bulk import dengan format sederhana: `name|url|key|password`
+- Validasi dan testing komprehensif untuk setiap API
+- Hasil detail menampilkan status sukses/gagal
+- Nama API user-friendly dengan case preservation dan spasi
+
+## Update Sebelumnya
+
+### v2.1
+- Nama API sekarang preserve case asli (contoh: "Main Server")
+- Dukungan spasi dalam nama API
+- Pengecekan uniqueness case-insensitive
+
+### v2.0
 - Migrasi dari python-telegram-bot ke aiogram 3.24.0
 - Arsitektur async-first modern dengan sistem Router
 - FSM (Finite State Machine) built-in untuk conversation flow yang lebih bersih
@@ -189,14 +205,15 @@ screen -S virtualizor-bot -X quit
 Struktur menu:
 - Menu Utama
   - API Management
-    - Add API
+    - Add API (single)
+    - Batch Add (multiple sekaligus)
     - List APIs
     - Set Default
     - Delete API
   - Virtual Machines
     - Pilih API (jika lebih dari satu)
     - List VMs
-    - VM Details (status, IP, VPS ID)
+    - VM Details (status, IP, VPS ID, resources)
   - About
   - Update Bot (jika tersedia)
 
@@ -207,10 +224,26 @@ Struktur menu:
 
 ## Konfigurasi API
 
+### Single API
 Saat menambahkan API, Anda memerlukan:
 1. API URL (contoh: https://panel.example.com:4085/index.php)
 2. API Key (dari Virtualizor Admin Panel > Configuration > API Credentials)
 3. API Password (dari lokasi yang sama)
+
+### Batch Add APIs
+Tambah banyak API sekaligus dengan format ini (satu per baris):
+```
+Main Server|https://panel1.com:4085/index.php|key123|pass123
+NAT Panel|https://panel2.com:4085/index.php|key456|pass456
+Backup VPS|https://panel3.com:4085/index.php|key789|pass789
+```
+
+**Aturan Format:**
+- Gunakan `|` sebagai pemisah
+- Satu API per baris
+- Semua field wajib diisi (name, URL, key, password)
+- Maksimal 10 API per batch
+- Setiap API divalidasi dan ditest sebelum disimpan
 
 ## Diuji Pada
 

@@ -31,6 +31,8 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Interactive menus using inline keyboards
 - Markdown formatted messages
 - Multiple API profile support with SQLite storage
+- **Batch Add APIs** - Add multiple connections at once
+- User-friendly API names with spaces and case preservation
 - VM listing with specs (vCPU, RAM, Storage, OS)
 - VM status indicators (Running, Stopped, Suspended)
 - Detailed VM info with real-time resource usage:
@@ -49,8 +51,22 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Virtualizor panel with API access enabled
 - Ubuntu/Debian (tested on Ubuntu 22.04, Debian 12/13)
 
-## What's New in v2.0
+## What's New in v2.2
 
+- **Batch Add APIs** - Add multiple API connections at once
+- Bulk import support with simple format: `name|url|key|password`
+- Comprehensive validation and testing for each API
+- Detailed results showing success/failure status
+- User-friendly API names with case preservation and spaces
+
+## Previous Updates
+
+### v2.1
+- API names now preserve original case (e.g., "Main Server")
+- Support for spaces in API names
+- Case-insensitive uniqueness check
+
+### v2.0
 - Migrated from python-telegram-bot to aiogram 3.24.0
 - Modern async-first architecture with Router system
 - Built-in FSM (Finite State Machine) for cleaner conversation flows
@@ -188,14 +204,15 @@ screen -S virtualizor-bot -X quit
 Menu structure:
 - Main Menu
   - API Management
-    - Add API
+    - Add API (single)
+    - Batch Add (multiple at once)
     - List APIs
     - Set Default
     - Delete API
   - Virtual Machines
     - Select API (if multiple)
     - List VMs
-    - VM Details (status, IP, VPS ID)
+    - VM Details (status, IP, VPS ID, resources)
   - About
   - Update Bot (when available)
 
@@ -206,10 +223,26 @@ Menu structure:
 
 ## API Configuration
 
+### Single API
 When adding an API, you need:
 1. API URL (e.g., https://panel.example.com:4085/index.php)
 2. API Key (from Virtualizor Admin Panel > Configuration > API Credentials)
 3. API Password (from the same location)
+
+### Batch Add APIs
+Add multiple APIs at once using this format (one per line):
+```
+Main Server|https://panel1.com:4085/index.php|key123|pass123
+NAT Panel|https://panel2.com:4085/index.php|key456|pass456
+Backup VPS|https://panel3.com:4085/index.php|key789|pass789
+```
+
+**Format Rules:**
+- Use `|` as separator
+- One API per line
+- All fields required (name, URL, key, password)
+- Maximum 10 APIs per batch
+- Each API is validated and tested before saving
 
 ## Tested On
 
