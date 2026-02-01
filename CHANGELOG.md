@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2] - 2026-02-01
+
+### Added
+- **Batch Add APIs** feature for adding multiple API connections at once
+- Support for bulk import with format: `name|url|key|password`
+- Comprehensive validation for batch operations
+- Detailed results showing success/failure for each API
+- Maximum 10 APIs per batch for safety
+
+### Features
+- Add multiple APIs in one operation
+- Format: One API per line with pipe separator
+- Automatic validation and testing for each API
+- Clear success/failure feedback
+- Connection testing before saving
+
+### Improved
+- API Management menu reorganized for better UX
+- Added "Batch Add" button alongside "Add API"
+- Better error messages for batch operations
+
 ## [2.1] - 2026-02-01
 
 ### Added

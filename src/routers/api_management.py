@@ -33,6 +33,10 @@ class APIForm(StatesGroup):
     password = State()
 
 
+class BatchAPIForm(StatesGroup):
+    batch_input = State()
+
+
 def escape_md(text: str) -> str:
     chars = [
         "_",
@@ -370,6 +374,182 @@ async def api_cancel(callback: CallbackQuery, state: FSMContext):
         "Select an option to manage your API connections\\." + FOOTER
     )
     await callback.message.edit_text(text, reply_markup=get_api_menu())
+
+
+@router.callback_query(F.data == "api_batch_add")
+async def api_batch_add_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    if not auth_check(callback.from_user.id):
+        return
+
+    await state.update_data(bot_msg_id=callback.message.message_id)
+
+    text = (
+        "*Batch Add APIs*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Add multiple API connections at once\\.\n\n"
+        "*Format:* One API per line\n"
+        "`name|url|key|password`\n\n"
+        "*Example:*\n"
+        "`Main Server|https://panel1\\.com:4085/index\\.php|key123|pass123`\n"
+        "`NAT Panel|https://panel2\\.com:4085/index\\.php|key456|pass456`\n\n"
+        "*Rules:*\n"
+        "\\- Use `|` as separator\n"
+        "\\- One API per line\n"
+        "\\- All fields required\n"
+        "\\- Max 10 APIs per batch\n\n"
+        "Paste your APIs below:" + FOOTER
+    )
+    await callback.message.edit_text(text, reply_markup=get_cancel_keyboard())
+    await state.set_state(BatchAPIForm.batch_input)
+
+
+@router.message(BatchAPIForm.batch_input)
+async def batch_input_process(message: Message, state: FSMContext):
+    await delete_user_message(message)
+
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
+
+    lines = [line.strip() for line in message.text.strip().split("\n") if line.strip()]
+
+    if not lines:
+        text = (
+            "*Batch Add APIs*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "_No data provided\\._\n\n"
+            "Please paste your APIs in the correct format\\." + FOOTER
+        )
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
+        )
+        return
+
+    if len(lines) > 10:
+        text = (
+            "*Batch Add APIs*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"_Too many APIs \\({len(lines)}\\)\\._\n\n"
+            "Maximum 10 APIs per batch\\.\n"
+            "Please reduce the number and try again\\." + FOOTER
+        )
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
+        )
+        return
+
+    text = (
+        "*Batch Add APIs*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"_Processing {len(lines)} API\\(s\\)\\.\\.\\._"
+    )
+    await message.bot.edit_message_text(
+        text, chat_id=message.chat.id, message_id=bot_msg_id
+    )
+
+    results = []
+    success_count = 0
+    failed_count = 0
+
+    for idx, line in enumerate(lines, 1):
+        parts = line.split("|")
+
+        if len(parts) != 4:
+            results.append(f"{idx}\\. ❌ Invalid format")
+            failed_count += 1
+            continue
+
+        name, url, key, password = [p.strip() for p in parts]
+
+        if not name or len(name) < 2:
+            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Name too short")
+            failed_count += 1
+            continue
+
+        if len(name) > 50:
+            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Name too long")
+            failed_count += 1
+            continue
+
+        if not all(c.isalnum() or c in " -_" for c in name):
+            results.append(
+                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Invalid characters"
+            )
+            failed_count += 1
+            continue
+
+        if await db.api_exists_case_insensitive(name):
+            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Already exists")
+            failed_count += 1
+            continue
+
+        if not url.startswith("https://"):
+            results.append(
+                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- URL must be HTTPS"
+            )
+            failed_count += 1
+            continue
+
+        if len(key) < 10 or len(password) < 5:
+            results.append(
+                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Invalid credentials"
+            )
+            failed_count += 1
+            continue
+
+        try:
+            api = VirtualizorAPI(url, key, password)
+            result = api.test_connection()
+            await db.add_api(name, url, key, password)
+            results.append(
+                f"{idx}\\. ✅ `{escape_md(name[:20])}` \\- {result['vm_count']} VMs"
+            )
+            success_count += 1
+        except APIConnectionError:
+            results.append(
+                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Connection failed"
+            )
+            failed_count += 1
+        except AuthenticationError:
+            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Auth failed")
+            failed_count += 1
+        except Exception as e:
+            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Error")
+            failed_count += 1
+
+    summary = f"✅ {success_count} succeeded, ❌ {failed_count} failed"
+
+    text = (
+        "*Batch Add Results*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"*Summary:* {summary}\n\n" + "\n".join(results[:15])
+    )
+
+    if len(results) > 15:
+        text += f"\n\n_\\.\\.\\. and {len(results) - 15} more_"
+
+    text += FOOTER
+
+    builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        builder.add(btn)
+    builder.adjust(2)
+
+    await message.bot.edit_message_text(
+        text,
+        chat_id=message.chat.id,
+        message_id=bot_msg_id,
+        reply_markup=builder.as_markup(),
+    )
+
+    await state.clear()
 
 
 @router.callback_query(F.data == "api_list")

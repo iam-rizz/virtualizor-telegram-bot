@@ -60,12 +60,13 @@ def get_api_menu():
 
     builder.row(
         InlineKeyboardButton(text="Add API", callback_data="api_add"),
-        InlineKeyboardButton(text="List APIs", callback_data="api_list"),
+        InlineKeyboardButton(text="Batch Add", callback_data="api_batch_add"),
     )
     builder.row(
+        InlineKeyboardButton(text="List APIs", callback_data="api_list"),
         InlineKeyboardButton(text="Set Default", callback_data="api_default"),
-        InlineKeyboardButton(text="Delete API", callback_data="api_delete"),
     )
+    builder.row(InlineKeyboardButton(text="Delete API", callback_data="api_delete"))
     builder.row(InlineKeyboardButton(text=BTN_BACK, callback_data="menu_main"))
 
     return builder.as_markup()
