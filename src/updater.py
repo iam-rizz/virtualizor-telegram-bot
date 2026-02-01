@@ -17,9 +17,10 @@ _last_check = 0
 
 
 def parse_version(version_str: str) -> tuple:
-    match = re.search(r"(\d+)\.(\d+)\.(\d+)", version_str)
+    match = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", version_str)
     if match:
-        return tuple(map(int, match.groups()))
+        major, minor, patch = match.groups()
+        return (int(major), int(minor), int(patch) if patch else 0)
     return (0, 0, 0)
 
 
