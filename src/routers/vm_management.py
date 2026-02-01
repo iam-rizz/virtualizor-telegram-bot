@@ -173,7 +173,6 @@ async def vm_select_api(callback: CallbackQuery):
 
 
 def _build_vm_list_text(vms, escaped_api_name):
-    """Build the VM list display text."""
     text = (
         f"*Virtual Machines* \\({len(vms)}\\)\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -209,7 +208,6 @@ def _build_vm_list_text(vms, escaped_api_name):
 
 
 def _build_vm_list_buttons(vms, api_config):
-    """Build the VM list keyboard buttons."""
     builder = InlineKeyboardBuilder()
 
     for vm in vms:
@@ -245,7 +243,6 @@ def _build_vm_list_buttons(vms, api_config):
 
 
 def _handle_vm_list_error(error):
-    """Handle errors when fetching VM list."""
     if isinstance(error, APIConnectionError):
         text = (
             f"*Connection Error*\n"
@@ -315,7 +312,6 @@ async def vm_list(callback: CallbackQuery):
 
 
 def _build_vm_detail_text(vm, stats, escaped_api_name, vpsid):
-    """Build the VM detail display text."""
     if vm["status"] == "running":
         status_text = "Running"
         status_icon = "●"
@@ -386,7 +382,6 @@ def _build_vm_detail_text(vm, stats, escaped_api_name, vpsid):
 
 
 def _build_vm_detail_buttons(vm, api_name, vpsid):
-    """Build the VM detail keyboard buttons."""
     builder = InlineKeyboardBuilder()
 
     if vm["status"] == "running":
@@ -494,7 +489,6 @@ async def vm_detail(callback: CallbackQuery):
 
 
 def _get_action_wait_time(action):
-    """Get wait time based on action type."""
     if action in ["start", "restart"]:
         return 30
     elif action in ["stop", "poweroff"]:
@@ -504,7 +498,6 @@ def _get_action_wait_time(action):
 
 
 def _get_action_message(action):
-    """Get action message based on action type."""
     wait_msg = ""
     if action == "start":
         wait_msg = "\n\n_Note: VM startup may take 30\\-60 seconds\\._"
@@ -514,7 +507,6 @@ def _get_action_message(action):
 
 
 def _build_action_error_buttons(api_name, vpsid, action):
-    """Build error buttons for failed actions."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -531,7 +523,6 @@ def _build_action_error_buttons(api_name, vpsid, action):
 
 
 def _build_connection_error_buttons(api_name, vpsid):
-    """Build buttons for connection errors."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="< Back", callback_data=f"vm_{api_name}_{vpsid}")
