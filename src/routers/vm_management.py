@@ -1,10 +1,17 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from src.database import db
 from src.api import VirtualizorAPI, APIError, APIConnectionError, AuthenticationError
-from .base import auth_check, get_nav_buttons, chunk_buttons, BTN_BACK, FOOTER
+from src.routers.base import (
+    auth_check,
+    get_nav_buttons,
+    BTN_BACK,
+    FOOTER,
+)
+
+router = Router()
 
 TITLE_VM = "*Virtual Machines*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -96,11 +103,11 @@ def progress_bar(used, total, length: int = 10) -> str:
     return "█" * filled + "░" * (length - filled)
 
 
-async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "menu_vms")
+async def show_vms_menu(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     apis = await db.list_apis()
@@ -111,17 +118,13 @@ async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "You need to add an API connection first to view your virtual machines\\.\n"
             "Go to API Management to add your Virtualizor credentials\\." + FOOTER
         )
-        keyboard = [[InlineKeyboardButton(BTN_BACK, callback_data="menu_main")]]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text=BTN_BACK, callback_data="menu_main"))
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
         return
 
     if len(apis) == 1:
-        context.user_data["selected_api"] = apis[0]["name"]
-        await _show_vm_list(query, context, apis[0])
+        await _show_vm_list(callback, apis[0])
         return
 
     text = (
@@ -129,33 +132,28 @@ async def show_vms_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Select which Virtualizor panel to view VMs from\\.\n\n"
         "_\\* indicates default API_" + FOOTER
     )
-    buttons = []
+
+    builder = InlineKeyboardBuilder()
     for api in apis:
         default = " *" if api["is_default"] else ""
-        buttons.append(
-            InlineKeyboardButton(
-                f"{api['name']}{default}", callback_data=f"vmapi_{api['name']}"
-            )
+        builder.button(
+            text=f"{api['name']}{default}", callback_data=f"vmapi_{api['name']}"
         )
+    builder.adjust(2)
 
-    keyboard = chunk_buttons(buttons, 2)
-    keyboard.append([InlineKeyboardButton(BTN_BACK, callback_data="menu_main")])
+    builder.row(InlineKeyboardButton(text=BTN_BACK, callback_data="menu_main"))
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data.startswith("vmapi_"))
+async def vm_select_api(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
-    api_name = query.data.replace("vmapi_", "")
+    api_name = callback.data.replace("vmapi_", "")
     api_config = await db.get_api(api_name)
 
     if not api_config:
@@ -163,24 +161,22 @@ async def vm_select_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
             TITLE_VM + "_API not found\\._\n\n"
             "The selected API configuration could not be found\\." + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_vms", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
         return
 
-    context.user_data["selected_api"] = api_name
-    await _show_vm_list(query, context, api_config)
+    await _show_vm_list(callback, api_config)
 
 
-async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: dict):
+async def _show_vm_list(callback: CallbackQuery, api_config: dict):
     api_name = api_config["name"]
     escaped_api_name = escape_md(api_name)
 
     text = TITLE_VM + f"*API:* `{escaped_api_name}`\n\n_Loading VMs\\.\\.\\._"
-    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+    await callback.message.edit_text(text)
 
     try:
         api = VirtualizorAPI.from_db_config(api_config)
@@ -192,12 +188,11 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
                 "_No VMs found\\._\n\n"
                 "This Virtualizor panel has no virtual machines configured\\." + FOOTER
             )
-            keyboard = [get_nav_buttons("menu_vms", True)]
-            await query.edit_message_text(
-                text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode=ParseMode.MARKDOWN_V2,
-            )
+            builder = InlineKeyboardBuilder()
+            for btn in get_nav_buttons("menu_vms", True):
+                builder.add(btn)
+            builder.adjust(2)
+            await callback.message.edit_text(text, reply_markup=builder.as_markup())
             return
 
         text = (
@@ -208,7 +203,7 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             "● Running  ○ Stopped  ◌ Suspended\n\n"
         )
 
-        buttons = []
+        builder = InlineKeyboardBuilder()
         for vm in vms:
             if vm["status"] == "running":
                 status_icon = "●"
@@ -235,30 +230,27 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
                 if len(vm["hostname"]) > 15
                 else vm["hostname"]
             )
-            buttons.append(
-                InlineKeyboardButton(
-                    f"{status_icon} {btn_name}",
-                    callback_data=f"vm_{api_config['name']}_{vm['vpsid']}",
-                )
+            builder.button(
+                text=f"{status_icon} {btn_name}",
+                callback_data=f"vm_{api_config['name']}_{vm['vpsid']}",
             )
 
         text += FOOTER
+        builder.adjust(2)
 
-        keyboard = chunk_buttons(buttons, 2)
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "Refresh", callback_data=f"vmapi_{api_config['name']}"
-                )
-            ]
+        builder.row(
+            InlineKeyboardButton(
+                text="Refresh", callback_data=f"vmapi_{api_config['name']}"
+            )
         )
-        keyboard.append(get_nav_buttons("menu_vms", True))
 
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        nav_builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_vms", True):
+            nav_builder.add(btn)
+        nav_builder.adjust(2)
+        builder.attach(nav_builder)
+
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
     except APIConnectionError as e:
         text = (
@@ -267,12 +259,11 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             "Unable to connect to the Virtualizor panel\\.\n\n"
             f"`{escape_md(str(e))}`" + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_vms", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
     except AuthenticationError:
         text = (
@@ -281,12 +272,11 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             "_Invalid API credentials\\._\n\n"
             "Please check your API Key and Password in API Management\\." + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_vms", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
     except APIError as e:
         text = (
@@ -295,26 +285,26 @@ async def _show_vm_list(query, context: ContextTypes.DEFAULT_TYPE, api_config: d
             "An error occurred while fetching VMs\\.\n\n"
             f"`{escape_md(str(e))}`" + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_vms", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_vms", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def vm_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await show_vms_menu(update, context)
+@router.callback_query(F.data == "vm_list")
+async def vm_list(callback: CallbackQuery):
+    await show_vms_menu(callback)
 
 
-async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data.startswith("vm_"))
+async def vm_detail(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
-    parts = query.data.split("_", 2)
+    parts = callback.data.split("_", 2)
     if len(parts) < 3:
         return
 
@@ -327,7 +317,7 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text = "*VM Details*\n━━━━━━━━━━━━━━━━━━━━━\n\n_Loading\\.\\.\\._"
-    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+    await callback.message.edit_text(text)
 
     try:
         api = VirtualizorAPI.from_db_config(api_config)
@@ -347,12 +337,11 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "The virtual machine could not be found\\. "
                 "It may have been deleted or the VPS ID is invalid\\." + FOOTER
             )
-            keyboard = [get_nav_buttons(f"vmapi_{api_name}", True)]
-            await query.edit_message_text(
-                text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode=ParseMode.MARKDOWN_V2,
-            )
+            builder = InlineKeyboardBuilder()
+            for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+                builder.add(btn)
+            builder.adjust(2)
+            await callback.message.edit_text(text, reply_markup=builder.as_markup())
             return
 
         stats = api.get_vm_stats(vpsid)
@@ -422,16 +411,18 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*Virtualization:* {virt}" + FOOTER
         )
 
-        keyboard = [
-            [InlineKeyboardButton("Refresh", callback_data=f"vm_{api_name}_{vpsid}")],
-            get_nav_buttons(f"vmapi_{api_name}", True),
-        ]
-
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(text="Refresh", callback_data=f"vm_{api_name}_{vpsid}")
         )
+
+        nav_builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+            nav_builder.add(btn)
+        nav_builder.adjust(2)
+        builder.attach(nav_builder)
+
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
     except (APIConnectionError, AuthenticationError, APIError) as e:
         text = (
@@ -440,9 +431,8 @@ async def vm_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "An error occurred while fetching VM details\\.\n\n"
             f"`{escape_md(str(e))}`" + FOOTER
         )
-        keyboard = [get_nav_buttons(f"vmapi_{api_name}", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())

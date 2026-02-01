@@ -1,10 +1,13 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command
 
 from src.config import ALLOWED_USER_IDS
 from src.version import __version__, __author__, __github__, __telegram__, __forum__
 from src.updater import check_for_updates, run_update
+
+router = Router()
 
 BTN_BACK = "< Back"
 BTN_HOME = "Home"
@@ -15,16 +18,12 @@ def auth_check(user_id: int) -> bool:
     return user_id in ALLOWED_USER_IDS
 
 
-def chunk_buttons(buttons: list, cols: int = 2) -> list:
-    return [buttons[i : i + cols] for i in range(0, len(buttons), cols)]
-
-
 def get_nav_buttons(back: str = None, home: bool = True) -> list:
     buttons = []
     if back:
-        buttons.append(InlineKeyboardButton(BTN_BACK, callback_data=back))
+        buttons.append(InlineKeyboardButton(text=BTN_BACK, callback_data=back))
     if home:
-        buttons.append(InlineKeyboardButton(BTN_HOME, callback_data="menu_main"))
+        buttons.append(InlineKeyboardButton(text=BTN_HOME, callback_data="menu_main"))
     return buttons
 
 
@@ -35,62 +34,57 @@ async def get_dynamic_footer() -> str:
     return f"\n\n─────────────────────\n`v{__version__}` \\| by _[{__author__}](tg://user?id=7898378667)_"
 
 
-async def get_main_menu() -> InlineKeyboardMarkup:
+async def get_main_menu():
     update_info = await check_for_updates()
-    keyboard = [
-        [
-            InlineKeyboardButton("API Management", callback_data="menu_api"),
-            InlineKeyboardButton("Virtual Machines", callback_data="menu_vms"),
-        ],
-        [InlineKeyboardButton("About", callback_data="menu_about")],
-    ]
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(text="API Management", callback_data="menu_api"),
+        InlineKeyboardButton(text="Virtual Machines", callback_data="menu_vms"),
+    )
+    builder.row(InlineKeyboardButton(text="About", callback_data="menu_about"))
+
     if update_info["update_available"]:
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    f"Update Bot (v{update_info['latest']})", callback_data="bot_update"
-                )
-            ]
+        builder.row(
+            InlineKeyboardButton(
+                text=f"Update Bot (v{update_info['latest']})",
+                callback_data="bot_update",
+            )
         )
-    return InlineKeyboardMarkup(keyboard)
+
+    return builder.as_markup()
 
 
-def get_api_menu() -> InlineKeyboardMarkup:
-    keyboard = [
-        [
-            InlineKeyboardButton("Add API", callback_data="api_add"),
-            InlineKeyboardButton("List APIs", callback_data="api_list"),
-        ],
-        [
-            InlineKeyboardButton("Set Default", callback_data="api_default"),
-            InlineKeyboardButton("Delete API", callback_data="api_delete"),
-        ],
-        [InlineKeyboardButton(BTN_BACK, callback_data="menu_main")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+def get_api_menu():
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(text="Add API", callback_data="api_add"),
+        InlineKeyboardButton(text="List APIs", callback_data="api_list"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="Set Default", callback_data="api_default"),
+        InlineKeyboardButton(text="Delete API", callback_data="api_delete"),
+    )
+    builder.row(InlineKeyboardButton(text=BTN_BACK, callback_data="menu_main"))
+
+    return builder.as_markup()
 
 
-def get_back_button(
-    callback: str = "menu_main", home: bool = True
-) -> InlineKeyboardMarkup:
-    buttons = get_nav_buttons(callback, home)
-    return InlineKeyboardMarkup([buttons])
-
-
-async def delete_user_message(update: Update):
+async def delete_user_message(message: Message):
     try:
-        if update.message:
-            await update.message.delete()
+        await message.delete()
     except Exception:
         pass
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not auth_check(update.effective_user.id):
-        await update.message.reply_text("Access denied.")
+@router.message(Command("start"))
+async def start(message: Message):
+    if not auth_check(message.from_user.id):
+        await message.answer("Access denied.")
         return
 
-    await delete_user_message(update)
+    await delete_user_message(message)
     footer = await get_dynamic_footer()
 
     text = (
@@ -106,16 +100,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Select an option below to continue\\." + footer
     )
 
-    await update.message.reply_text(
-        text, reply_markup=await get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await message.answer(text, reply_markup=await get_main_menu())
 
 
-async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "menu_main")
+async def show_main_menu(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     footer = await get_dynamic_footer()
@@ -131,16 +123,14 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Select an option to continue\\." + footer
     )
 
-    await query.edit_message_text(
-        text, reply_markup=await get_main_menu(), parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await callback.message.edit_text(text, reply_markup=await get_main_menu())
 
 
-async def show_api_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "menu_api")
+async def show_api_menu(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     text = (
@@ -154,16 +144,14 @@ async def show_api_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Select an option to continue\\." + FOOTER
     )
 
-    await query.edit_message_text(
-        text, reply_markup=get_api_menu(), parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await callback.message.edit_text(text, reply_markup=get_api_menu())
 
 
-async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "menu_about")
+async def show_about(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     text = (
@@ -179,21 +167,19 @@ async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Virtualizor VPS servers\\. Self\\-hosted and secure\\." + FOOTER
     )
 
-    keyboard = [[InlineKeyboardButton(BTN_BACK, callback_data="menu_main")]]
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=BTN_BACK, callback_data="menu_main"))
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True,
+    await callback.message.edit_text(
+        text, reply_markup=builder.as_markup(), disable_web_page_preview=True
     )
 
 
-async def bot_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "bot_update")
+async def bot_update(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     text = (
@@ -204,7 +190,7 @@ async def bot_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Please wait a moment\\."
     )
 
-    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+    await callback.message.edit_text(text)
 
     result = run_update()
 
@@ -224,10 +210,7 @@ async def bot_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Please run `\\./update\\.sh` manually\\." + FOOTER
         )
 
-    keyboard = [[InlineKeyboardButton(BTN_HOME, callback_data="menu_main")]]
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=BTN_HOME, callback_data="menu_main"))
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())

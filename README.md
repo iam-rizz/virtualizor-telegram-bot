@@ -45,6 +45,14 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Virtualizor panel with API access enabled
 - Ubuntu/Debian (tested on Ubuntu 22.04, Debian 12/13)
 
+## What's New in v2.0
+
+- Migrated from python-telegram-bot to aiogram 3.24.0
+- Modern async-first architecture with Router system
+- Built-in FSM (Finite State Machine) for cleaner conversation flows
+- Improved performance and memory efficiency
+- Cleaner, more pythonic code structure
+
 ## Project Structure
 
 ```
@@ -63,7 +71,7 @@ virtualizor-telegram-bot/
 │   │   └── exceptions.py
 │   ├── database/
 │   │   └── manager.py
-│   └── handlers/
+│   └── routers/          # aiogram routers (was handlers/)
 │       ├── base.py
 │       ├── api_management.py
 │       └── vm_management.py

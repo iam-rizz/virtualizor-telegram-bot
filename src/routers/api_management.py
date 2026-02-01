@@ -1,22 +1,36 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes, ConversationHandler
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from src.database import db
 from src.api import VirtualizorAPI, APIError, APIConnectionError, AuthenticationError
-from .base import (
+from src.routers.base import (
     auth_check,
     get_api_menu,
     get_nav_buttons,
-    chunk_buttons,
-    delete_user_message,
     FOOTER,
 )
 
-INPUT_NAME, INPUT_URL, INPUT_KEY, INPUT_PASS = range(4)
+router = Router()
 
 TITLE_ADD_API = "*Add New API*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
 TITLE_API_MGMT = "*API Management*\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+
+async def delete_user_message(message):
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+
+class APIForm(StatesGroup):
+    name = State()
+    url = State()
+    key = State()
+    password = State()
 
 
 def escape_md(text: str) -> str:
@@ -45,20 +59,20 @@ def escape_md(text: str) -> str:
     return text
 
 
-def get_cancel_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Cancel", callback_data="api_cancel")]]
-    )
+def get_cancel_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="Cancel", callback_data="api_cancel"))
+    return builder.as_markup()
 
 
-async def api_add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "api_add")
+async def api_add_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
-        return ConversationHandler.END
+    if not auth_check(callback.from_user.id):
+        return
 
-    context.user_data["bot_msg"] = query.message
+    await state.update_data(bot_msg_id=callback.message.message_id)
 
     text = (
         TITLE_ADD_API + "Step 1 of 4: API Name\n\n"
@@ -66,27 +80,30 @@ async def api_add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Use lowercase letters, numbers, hyphens or underscores\\.\n\n"
         "_Example:_ `main\\-server`" + FOOTER
     )
-    await query.edit_message_text(
-        text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
-    )
-    return INPUT_NAME
+    await callback.message.edit_text(text, reply_markup=get_cancel_keyboard())
+    await state.set_state(APIForm.name)
 
 
-async def input_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
+@router.message(APIForm.name)
+async def input_name(message: Message, state: FSMContext):
+    await delete_user_message(message)
 
-    name = update.message.text.strip().lower()
-    bot_msg = context.user_data.get("bot_msg")
+    name = message.text.strip().lower()
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
 
     if not name or len(name) < 2:
         text = (
             TITLE_ADD_API + "Name must be at least 2 characters\\.\n"
             "Please enter a valid name for your API connection\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_NAME
+        return
 
     if not name.replace("-", "").replace("_", "").isalnum():
         text = (
@@ -94,22 +111,28 @@ async def input_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
             + "Name can only contain letters, numbers, hyphens and underscores\\.\n"
             "Please enter a valid name\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_NAME
+        return
 
     if await db.api_exists(name):
         text = (
             TITLE_ADD_API + f"API `{escape_md(name)}` already exists\\.\n"
             "Please choose a different name for this connection\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_NAME
+        return
 
-    context.user_data["api_name"] = name
+    await state.update_data(api_name=name)
     escaped_name = escape_md(name)
     text = (
         TITLE_ADD_API + f"Step 2 of 4: API URL\n\n"
@@ -118,18 +141,23 @@ async def input_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Include the full path with port number\\.\n\n"
         "_Example:_ `https://panel\\.example\\.com:4085/index\\.php`" + FOOTER
     )
-    await bot_msg.edit_text(
-        text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+    await message.bot.edit_message_text(
+        text,
+        chat_id=message.chat.id,
+        message_id=bot_msg_id,
+        reply_markup=get_cancel_keyboard(),
     )
-    return INPUT_URL
+    await state.set_state(APIForm.url)
 
 
-async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
+@router.message(APIForm.url)
+async def input_url(message: Message, state: FSMContext):
+    await delete_user_message(message)
 
-    url = update.message.text.strip()
-    bot_msg = context.user_data.get("bot_msg")
-    name = context.user_data.get("api_name")
+    url = message.text.strip()
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
+    name = data.get("api_name")
     escaped_name = escape_md(name)
 
     if not url.startswith("https://"):
@@ -138,12 +166,15 @@ async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "URL must start with `https://` for security\\.\n"
             "Please enter a valid HTTPS URL\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_URL
+        return
 
-    context.user_data["api_url"] = url
+    await state.update_data(api_url=url)
     escaped_url = escape_md(url)
     text = (
         TITLE_ADD_API + f"Step 3 of 4: API Key\n\n"
@@ -151,19 +182,24 @@ async def input_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Enter your API Key from Virtualizor panel\\.\n"
         "Find it in: Configuration \\> API Credentials" + FOOTER
     )
-    await bot_msg.edit_text(
-        text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+    await message.bot.edit_message_text(
+        text,
+        chat_id=message.chat.id,
+        message_id=bot_msg_id,
+        reply_markup=get_cancel_keyboard(),
     )
-    return INPUT_KEY
+    await state.set_state(APIForm.key)
 
 
-async def input_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
+@router.message(APIForm.key)
+async def input_key(message: Message, state: FSMContext):
+    await delete_user_message(message)
 
-    api_key = update.message.text.strip()
-    bot_msg = context.user_data.get("bot_msg")
-    name = context.user_data.get("api_name")
-    url = context.user_data.get("api_url")
+    api_key = message.text.strip()
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
+    name = data.get("api_name")
+    url = data.get("api_url")
     escaped_name = escape_md(name)
     escaped_url = escape_md(url)
 
@@ -173,32 +209,40 @@ async def input_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "API Key seems too short\\.\n"
             "Please enter a valid API Key from your Virtualizor panel\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_KEY
+        return
 
-    context.user_data["api_key"] = api_key
+    await state.update_data(api_key=api_key)
     text = (
         TITLE_ADD_API + f"Step 4 of 4: API Password\n\n"
         f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n*Key:* `{api_key[:8]}\\.\\.\\.`\n\n"
         "Enter your API Password\\.\n"
         "This is the password associated with your API Key\\." + FOOTER
     )
-    await bot_msg.edit_text(
-        text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+    await message.bot.edit_message_text(
+        text,
+        chat_id=message.chat.id,
+        message_id=bot_msg_id,
+        reply_markup=get_cancel_keyboard(),
     )
-    return INPUT_PASS
+    await state.set_state(APIForm.password)
 
 
-async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
+@router.message(APIForm.password)
+async def input_pass(message: Message, state: FSMContext):
+    await delete_user_message(message)
 
-    api_pass = update.message.text.strip()
-    bot_msg = context.user_data.get("bot_msg")
-    name = context.user_data.get("api_name")
-    url = context.user_data.get("api_url")
-    key = context.user_data.get("api_key")
+    api_pass = message.text.strip()
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
+    name = data.get("api_name")
+    url = data.get("api_url")
+    key = data.get("api_key")
 
     escaped_name = escape_md(name)
     escaped_url = escape_md(url)
@@ -209,18 +253,26 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Password seems too short\\.\n"
             "Please enter a valid API Password\\." + FOOTER
         )
-        await bot_msg.edit_text(
-            text, reply_markup=get_cancel_keyboard(), parse_mode=ParseMode.MARKDOWN_V2
+        await message.bot.edit_message_text(
+            text,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=get_cancel_keyboard(),
         )
-        return INPUT_PASS
+        return
 
     text = (
         TITLE_ADD_API + f"*Name:* `{escaped_name}`\n*URL:* `{escaped_url}`\n\n"
         "_Validating credentials\\.\\.\\._"
     )
-    await bot_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+    await message.bot.edit_message_text(
+        text, chat_id=message.chat.id, message_id=bot_msg_id
+    )
 
-    keyboard = [get_nav_buttons("menu_api", True)]
+    builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        builder.add(btn)
+    builder.adjust(2)
 
     try:
         api = VirtualizorAPI(url, key, api_pass)
@@ -236,10 +288,11 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"*VMs Found:* `{result['vm_count']}`\n\n"
             "You can now view your VMs from the main menu\\." + FOOTER
         )
-        await bot_msg.edit_text(
+        await message.bot.edit_message_text(
             text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=builder.as_markup(),
         )
 
     except APIConnectionError as e:
@@ -254,10 +307,11 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "\\- Server is online\n"
             "\\- Port is open" + FOOTER
         )
-        await bot_msg.edit_text(
+        await message.bot.edit_message_text(
             text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=builder.as_markup(),
         )
 
     except AuthenticationError:
@@ -268,10 +322,11 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Please verify your credentials in the Virtualizor panel "
             "under Configuration \\> API Credentials\\." + FOOTER
         )
-        await bot_msg.edit_text(
+        await message.bot.edit_message_text(
             text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=builder.as_markup(),
         )
 
     except APIError as e:
@@ -282,40 +337,41 @@ async def input_pass(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "An error occurred while communicating with the API\\.\n\n"
             f"*Error:* `{err}`" + FOOTER
         )
-        await bot_msg.edit_text(
+        await message.bot.edit_message_text(
             text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            chat_id=message.chat.id,
+            message_id=bot_msg_id,
+            reply_markup=builder.as_markup(),
         )
 
-    context.user_data.clear()
-    return ConversationHandler.END
+    await state.clear()
 
 
-async def api_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    context.user_data.clear()
+@router.callback_query(F.data == "api_cancel")
+async def api_cancel(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
 
     text = (
         TITLE_API_MGMT + "Operation cancelled\\.\n\n"
         "Select an option to manage your API connections\\." + FOOTER
     )
-    await query.edit_message_text(
-        text, reply_markup=get_api_menu(), parse_mode=ParseMode.MARKDOWN_V2
-    )
-    return ConversationHandler.END
+    await callback.message.edit_text(text, reply_markup=get_api_menu())
 
 
-async def api_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "api_list")
+async def api_list(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     apis = await db.list_apis()
-    keyboard = [get_nav_buttons("menu_api", True)]
+
+    builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        builder.add(btn)
+    builder.adjust(2)
 
     if not apis:
         text = (
@@ -326,11 +382,7 @@ async def api_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Go back and select Add API to register your first Virtualizor panel\\."
             + FOOTER
         )
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
         return
 
     text = (
@@ -347,18 +399,14 @@ async def api_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text += FOOTER
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def api_delete_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "api_delete")
+async def api_delete_start(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     apis = await db.list_apis()
@@ -371,12 +419,11 @@ async def api_delete_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "You need to add an API connection first before you can delete one\\."
             + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_api", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_api", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
         return
 
     text = (
@@ -386,28 +433,30 @@ async def api_delete_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "This will delete all saved credentials for that connection\\.\n\n"
         "_This action cannot be undone\\._" + FOOTER
     )
-    buttons = [
-        InlineKeyboardButton(api["name"], callback_data=f"apidel_{api['name']}")
-        for api in apis
-    ]
-    keyboard = chunk_buttons(buttons, 2)
-    keyboard.append(get_nav_buttons("menu_api", True))
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    builder = InlineKeyboardBuilder()
+    for api in apis:
+        builder.button(text=api["name"], callback_data=f"apidel_{api['name']}")
+    builder.adjust(2)
+
+    nav_builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        nav_builder.add(btn)
+    nav_builder.adjust(2)
+
+    builder.attach(nav_builder)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def api_delete_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data.startswith("apidel_"))
+async def api_delete_confirm(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
-    name = query.data.replace("apidel_", "")
+    name = callback.data.replace("apidel_", "")
     escaped_name = escape_md(name)
     success = await db.delete_api(name)
 
@@ -417,19 +466,20 @@ async def api_delete_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE)
         msg = f"API `{escaped_name}` was not found\\."
 
     text = f"*Delete API*\n" "━━━━━━━━━━━━━━━━━━━━━\n\n" f"{msg}" + FOOTER
-    keyboard = [get_nav_buttons("menu_api", True)]
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+
+    builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        builder.add(btn)
+    builder.adjust(2)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def api_default_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data == "api_default")
+async def api_default_start(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
     apis = await db.list_apis()
@@ -441,12 +491,11 @@ async def api_default_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "_No APIs configured\\._\n\n"
             "You need to add an API connection first\\." + FOOTER
         )
-        keyboard = [get_nav_buttons("menu_api", True)]
-        await query.edit_message_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons("menu_api", True):
+            builder.add(btn)
+        builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
         return
 
     text = (
@@ -456,30 +505,31 @@ async def api_default_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "The default API is automatically selected when you have only one API\\.\n\n"
         "_\\* indicates current default_" + FOOTER
     )
-    buttons = []
+
+    builder = InlineKeyboardBuilder()
     for api in apis:
         label = f"{api['name']} *" if api["is_default"] else api["name"]
-        buttons.append(
-            InlineKeyboardButton(label, callback_data=f"apidef_{api['name']}")
-        )
-    keyboard = chunk_buttons(buttons, 2)
-    keyboard.append(get_nav_buttons("menu_api", True))
+        builder.button(text=label, callback_data=f"apidef_{api['name']}")
+    builder.adjust(2)
 
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+    nav_builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        nav_builder.add(btn)
+    nav_builder.adjust(2)
+
+    builder.attach(nav_builder)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-async def api_default_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@router.callback_query(F.data.startswith("apidef_"))
+async def api_default_confirm(callback: CallbackQuery):
+    await callback.answer()
 
-    if not auth_check(query.from_user.id):
+    if not auth_check(callback.from_user.id):
         return
 
-    name = query.data.replace("apidef_", "")
+    name = callback.data.replace("apidef_", "")
     escaped_name = escape_md(name)
     success = await db.set_default(name)
 
@@ -489,9 +539,10 @@ async def api_default_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         msg = f"API `{escaped_name}` was not found\\."
 
     text = f"*Set Default*\n" "━━━━━━━━━━━━━━━━━━━━━\n\n" f"{msg}" + FOOTER
-    keyboard = [get_nav_buttons("menu_api", True)]
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
+
+    builder = InlineKeyboardBuilder()
+    for btn in get_nav_buttons("menu_api", True):
+        builder.add(btn)
+    builder.adjust(2)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())

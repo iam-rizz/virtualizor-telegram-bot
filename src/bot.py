@@ -1,135 +1,65 @@
-import warnings
+import asyncio
 import traceback
 
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ConversationHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from src.config import BOT_TOKEN, ALLOWED_USER_IDS
 from src.database import db
 from src.logger import setup_logger, print_banner
-from src.handlers import (
-    start,
-    show_main_menu,
-    show_api_menu,
-    show_about,
-    bot_update,
-    show_vms_menu,
-    api_add_start,
-    input_name,
-    input_url,
-    input_key,
-    input_pass,
-    api_cancel,
-    api_list,
-    api_delete_start,
-    api_delete_confirm,
-    api_default_start,
-    api_default_confirm,
-    vm_list,
-    vm_detail,
-    vm_select_api,
-    INPUT_NAME,
-    INPUT_URL,
-    INPUT_KEY,
-    INPUT_PASS,
-)
+from src.routers import base_router, api_router, vm_router
 
 logger = setup_logger()
 
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Exception: {context.error}")
-    logger.error(traceback.format_exc())
-
-
-async def post_init(application: Application):
+async def on_startup():
     await db.init()
     logger.info("Database initialized")
     logger.info("Bot is ready and listening for updates")
 
 
-def create_application() -> Application:
+async def main():
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN not set")
 
     if not ALLOWED_USER_IDS:
         raise ValueError("ALLOWED_USER_IDS not set")
 
-    application = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .post_init(post_init)
-        .concurrent_updates(True)
-        .build()
+    bot = Bot(
+        token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
     )
 
-    api_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(api_add_start, pattern="^api_add$")],
-        states={
-            INPUT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_name)],
-            INPUT_URL: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_url)],
-            INPUT_KEY: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_key)],
-            INPUT_PASS: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_pass)],
-        },
-        fallbacks=[CallbackQueryHandler(api_cancel, pattern="^api_cancel$")],
-        per_message=False,
-        per_chat=True,
-    )
+    dp = Dispatcher()
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(api_conv)
+    dp.include_router(base_router)
+    dp.include_router(api_router)
+    dp.include_router(vm_router)
 
-    application.add_handler(CallbackQueryHandler(show_main_menu, pattern="^menu_main$"))
-    application.add_handler(CallbackQueryHandler(show_api_menu, pattern="^menu_api$"))
-    application.add_handler(CallbackQueryHandler(show_vms_menu, pattern="^menu_vms$"))
-    application.add_handler(CallbackQueryHandler(show_about, pattern="^menu_about$"))
-    application.add_handler(CallbackQueryHandler(bot_update, pattern="^bot_update$"))
+    dp.startup.register(on_startup)
 
-    application.add_handler(CallbackQueryHandler(api_list, pattern="^api_list$"))
-    application.add_handler(
-        CallbackQueryHandler(api_delete_start, pattern="^api_delete$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_delete_confirm, pattern="^apidel_")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_default_start, pattern="^api_default$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(api_default_confirm, pattern="^apidef_")
-    )
+    logger.info("Configuration loaded")
+    logger.info(f"Authorized users: {ALLOWED_USER_IDS}")
 
-    application.add_handler(CallbackQueryHandler(vm_select_api, pattern="^vmapi_"))
-    application.add_handler(CallbackQueryHandler(vm_list, pattern="^vm_list$"))
-    application.add_handler(CallbackQueryHandler(vm_detail, pattern="^vm_"))
-
-    application.add_error_handler(error_handler)
-
-    return application
+    try:
+        await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
+    except Exception as e:
+        logger.error(f"Error during polling: {e}")
+        logger.error(traceback.format_exc())
+    finally:
+        await bot.session.close()
 
 
 def run():
-    warnings.filterwarnings("ignore", message=".*per_message.*")
-
     print_banner()
     logger.info("Starting bot...")
 
     try:
-        application = create_application()
-        logger.info("Configuration loaded")
-        logger.info(f"Authorized users: {ALLOWED_USER_IDS}")
-        application.run_polling(allowed_updates=["message", "callback_query"])
+        asyncio.run(main())
     except ValueError as e:
         logger.error(str(e))
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
+        logger.error(traceback.format_exc())
