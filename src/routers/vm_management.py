@@ -299,8 +299,6 @@ async def vm_list(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("vm_"))
 async def vm_detail(callback: CallbackQuery):
-    await callback.answer()
-
     if not auth_check(callback.from_user.id):
         return
 
@@ -315,6 +313,11 @@ async def vm_detail(callback: CallbackQuery):
     api_config = await db.get_api(api_name)
     if not api_config:
         return
+
+    try:
+        await callback.answer()
+    except Exception:
+        pass
 
     text = "*VM Details*\n━━━━━━━━━━━━━━━━━━━━━\n\n_Loading\\.\\.\\._"
     await callback.message.edit_text(text)
@@ -389,8 +392,9 @@ async def vm_detail(callback: CallbackQuery):
             f"*{hostname}*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"*Status:* {status_icon} {status_text}\n"
+            f"*API:* `{escaped_api_name}`\n"
+            f"*Hostname:* {hostname}\n"
             f"*VPS ID:* `{escaped_vpsid}`\n"
-            f"*API:* `{escaped_api_name}`\n\n"
             "*Network*\n"
             "━━━━━━━\n"
             f"*IPv4:* `{ipv4}`\n"
@@ -463,13 +467,13 @@ async def vm_detail(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("vmact_"))
 async def vm_action_handler(callback: CallbackQuery):
-    await callback.answer()
-
     if not auth_check(callback.from_user.id):
+        await callback.answer("Access denied")
         return
 
     parts = callback.data.split("_", 3)
     if len(parts) < 4:
+        await callback.answer("Invalid action")
         return
 
     api_name = parts[1]
@@ -478,6 +482,7 @@ async def vm_action_handler(callback: CallbackQuery):
 
     api_config = await db.get_api(api_name)
     if not api_config:
+        await callback.answer("API not found")
         return
 
     action_names = {
@@ -494,7 +499,16 @@ async def vm_action_handler(callback: CallbackQuery):
         f"_{action_name} VM\\.\\.\\._\n\n"
         "Please wait\\.\\.\\."
     )
-    await callback.message.edit_text(text)
+
+    try:
+        await callback.message.edit_text(text)
+    except Exception:
+        pass
+
+    try:
+        await callback.answer()
+    except Exception:
+        pass
 
     try:
         api = VirtualizorAPI.from_db_config(api_config)
@@ -508,6 +522,32 @@ async def vm_action_handler(callback: CallbackQuery):
         }
         action_done = action_past.get(action, action)
 
+        wait_time = 5
+        wait_msg = ""
+        if action == "start":
+            wait_time = 30
+            wait_msg = "\n\n_Note: VM startup may take 30\\-60 seconds\\._"
+        elif action == "restart":
+            wait_time = 30
+            wait_msg = "\n\n_Note: VM restart may take 30\\-60 seconds\\._"
+        elif action in ["stop", "poweroff"]:
+            wait_time = 10
+
+        text = (
+            f"*VM Action*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"VM successfully {action_done}\\.\n\n"
+            f"*VPS ID:* `{escape_md(vpsid)}`\n"
+            f"*Action:* {escape_md(action.title())}\n\n"
+            f"_Waiting {wait_time} seconds before refresh\\.\\.\\._"
+            f"{wait_msg}"
+        )
+        await callback.message.edit_text(text)
+
+        import asyncio
+
+        await asyncio.sleep(wait_time)
+
         text = (
             f"*VM Action*\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -518,11 +558,30 @@ async def vm_action_handler(callback: CallbackQuery):
         )
         await callback.message.edit_text(text)
 
-        import asyncio
-
-        await asyncio.sleep(2)
-
-        await vm_detail(callback)
+        object.__setattr__(callback, "data", f"vm_{api_name}_{vpsid}")
+        try:
+            await vm_detail(callback)
+        except Exception:
+            text = (
+                f"*VM Action*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"VM successfully {action_done}\\.\n\n"
+                f"*VPS ID:* `{escape_md(vpsid)}`\n"
+                f"*Action:* {escape_md(action.title())}\n\n"
+                "Click Refresh to see updated status\\." + FOOTER
+            )
+            builder = InlineKeyboardBuilder()
+            builder.row(
+                InlineKeyboardButton(
+                    text="Refresh", callback_data=f"vm_{api_name}_{vpsid}"
+                )
+            )
+            nav_builder = InlineKeyboardBuilder()
+            for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+                nav_builder.add(btn)
+            nav_builder.adjust(2)
+            builder.attach(nav_builder)
+            await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
     except APIError as e:
         text = (

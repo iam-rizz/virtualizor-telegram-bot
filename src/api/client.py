@@ -154,7 +154,7 @@ class VirtualizorAPI:
         if action not in valid_actions:
             raise APIError(f"Invalid action: {action}")
 
-        response = self._request(action, svs=vpsid)
+        response = self._request(action, svs=vpsid, do=1)
 
         if "error" in response and response["error"]:
             error_msg = response.get("error", {})

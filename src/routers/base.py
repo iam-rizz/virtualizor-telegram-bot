@@ -11,7 +11,9 @@ router = Router()
 
 BTN_BACK = "< Back"
 BTN_HOME = "Home"
-FOOTER = f"\n\n─────────────────────\n`v{__version__}` \\| by _[{__author__}](tg://user?id=7898378667)_"
+# Escape periods in version number for MarkdownV2
+_escaped_version = __version__.replace(".", "\\.")
+FOOTER = f"\n\n─────────────────────\n`v{_escaped_version}` \\| by _[{__author__}](tg://user?id=7898378667)_"
 
 
 def auth_check(user_id: int) -> bool:
@@ -30,8 +32,12 @@ def get_nav_buttons(back: str = None, home: bool = True) -> list:
 async def get_dynamic_footer() -> str:
     update_info = await check_for_updates()
     if update_info["update_available"]:
-        return f"\n\n─────────────────────\n`v{__version__}` _\\(v{update_info['latest']} available\\)_"
-    return f"\n\n─────────────────────\n`v{__version__}` \\| by _[{__author__}](tg://user?id=7898378667)_"
+        # Escape periods in version number
+        latest_version = str(update_info["latest"]).replace(".", "\\.")
+        escaped_version = __version__.replace(".", "\\.")
+        return f"\n\n─────────────────────\n`v{escaped_version}` _\\(v{latest_version} available\\)_"
+    escaped_version = __version__.replace(".", "\\.")
+    return f"\n\n─────────────────────\n`v{escaped_version}` \\| by _[{__author__}](tg://user?id=7898378667)_"
 
 
 async def get_main_menu():
@@ -155,10 +161,11 @@ async def show_about(callback: CallbackQuery):
     if not auth_check(callback.from_user.id):
         return
 
+    escaped_version = __version__.replace(".", "\\.")
     text = (
         "*About*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"*Version:* `{__version__}`\n"
+        f"*Version:* `{escaped_version}`\n"
         f"*Author:* {__author__}\n\n"
         "*Links:*\n"
         f"[GitHub Repository]({__github__})\n"

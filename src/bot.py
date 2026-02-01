@@ -1,5 +1,6 @@
 import asyncio
 import traceback
+import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -19,12 +20,20 @@ async def on_startup():
     logger.info("Bot is ready and listening for updates")
 
 
-async def main():
+async def main(debug=False):
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN not set")
 
     if not ALLOWED_USER_IDS:
         raise ValueError("ALLOWED_USER_IDS not set")
+
+    if debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled")
 
     bot = Bot(
         token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
@@ -50,12 +59,14 @@ async def main():
         await bot.session.close()
 
 
-def run():
+def run(debug=False):
     print_banner()
     logger.info("Starting bot...")
+    if debug:
+        logger.info("Debug mode: ON")
 
     try:
-        asyncio.run(main())
+        asyncio.run(main(debug))
     except ValueError as e:
         logger.error(str(e))
     except KeyboardInterrupt:
