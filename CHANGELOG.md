@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3] - 2026-02-01
+
+### Added
+- **VM Power Controls** - Start, Stop, Restart, and Power Off VMs directly from Telegram
+- Action buttons in VM details page based on VM status
+- Automatic status detection for available actions
+- Success/failure feedback for VM operations
+- Auto-refresh after successful action
+
+### Changed
+- Removed emojis from button labels for cleaner interface
+- Kept status indicators (● ○ ◌) for better visual recognition
+
+### Features
+- Start VM (when stopped)
+- Stop VM (when running)
+- Restart VM (when running)
+- Power Off VM (when running)
+- Retry option on failure
+- Real-time action feedback
+
+### Improved
+- VM details page now includes power control buttons
+- Better user experience with contextual actions
+- Clear error messages for failed operations
+
 ## [2.2] - 2026-02-01
 
 ### Added

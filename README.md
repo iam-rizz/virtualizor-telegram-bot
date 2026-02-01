@@ -33,6 +33,7 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Multiple API profile support with SQLite storage
 - **Batch Add APIs** - Add multiple connections at once
 - User-friendly API names with spaces and case preservation
+- **VM Power Controls** - Start, Stop, Restart, Power Off from Telegram
 - VM listing with specs (vCPU, RAM, Storage, OS)
 - VM status indicators (Running, Stopped, Suspended)
 - Detailed VM info with real-time resource usage:
@@ -51,27 +52,29 @@ A self-hosted Telegram bot for managing Virtualizor VMs via API. Designed for si
 - Virtualizor panel with API access enabled
 - Ubuntu/Debian (tested on Ubuntu 22.04, Debian 12/13)
 
-## What's New in v2.2
+## What's New in v2.3
 
-- **Batch Add APIs** - Add multiple API connections at once
-- Bulk import support with simple format: `name|url|key|password`
-- Comprehensive validation and testing for each API
-- Detailed results showing success/failure status
-- User-friendly API names with case preservation and spaces
+- **VM Power Controls** - Start, Stop, Restart, and Power Off VMs from Telegram
+- Action buttons in VM details based on current status
+- Real-time feedback and auto-refresh after actions
+- Retry option for failed operations
 
 ## Previous Updates
 
+### v2.2
+- **Batch Add APIs** - Add multiple API connections at once
+- Bulk import support with simple format
+- Comprehensive validation and testing
+
 ### v2.1
-- API names now preserve original case (e.g., "Main Server")
+- API names now preserve original case
 - Support for spaces in API names
 - Case-insensitive uniqueness check
 
 ### v2.0
-- Migrated from python-telegram-bot to aiogram 3.24.0
-- Modern async-first architecture with Router system
-- Built-in FSM (Finite State Machine) for cleaner conversation flows
-- Improved performance and memory efficiency
-- Cleaner, more pythonic code structure
+- Migrated to aiogram 3.24.0
+- Modern async-first architecture
+- Built-in FSM for cleaner flows
 
 ## Project Structure
 
@@ -213,6 +216,11 @@ Menu structure:
     - Select API (if multiple)
     - List VMs
     - VM Details (status, IP, VPS ID, resources)
+      - Start VM (if stopped)
+      - Stop VM (if running)
+      - Restart VM (if running)
+      - Power Off VM (if running)
+      - Refresh status
   - About
   - Update Bot (when available)
 
@@ -260,9 +268,10 @@ Backup VPS|https://panel3.com:4085/index.php|key789|pass789
 
 ## Planned Features
 
-- VM power controls (start/stop/restart)
 - Port forwarding management
-- Resource monitoring
+- Resource monitoring graphs
+- Scheduled actions
+- Bulk VM operations
 
 ## Author
 

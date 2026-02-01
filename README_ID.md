@@ -34,6 +34,7 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Support multiple profil API dengan penyimpanan SQLite
 - **Batch Add APIs** - Tambah banyak koneksi sekaligus
 - Nama API user-friendly dengan spasi dan case preservation
+- **Kontrol Power VM** - Start, Stop, Restart, Power Off dari Telegram
 - Daftar VM dengan spesifikasi (vCPU, RAM, Storage, OS)
 - Indikator status VM (Running, Stopped, Suspended)
 - Detail VM dengan penggunaan resource real-time:
@@ -52,27 +53,29 @@ Bot Telegram self-hosted untuk mengelola VM Virtualizor melalui API. Dirancang u
 - Panel Virtualizor dengan akses API aktif
 - Ubuntu/Debian (diuji pada Ubuntu 22.04, Debian 12/13)
 
-## Yang Baru di v2.2
+## Yang Baru di v2.3
 
-- **Batch Add APIs** - Tambah banyak API sekaligus
-- Dukungan bulk import dengan format sederhana: `name|url|key|password`
-- Validasi dan testing komprehensif untuk setiap API
-- Hasil detail menampilkan status sukses/gagal
-- Nama API user-friendly dengan case preservation dan spasi
+- **Kontrol Power VM** - Start, Stop, Restart, dan Power Off VM dari Telegram
+- Tombol aksi di halaman detail VM berdasarkan status
+- Feedback real-time dan auto-refresh setelah aksi
+- Opsi retry untuk operasi yang gagal
 
 ## Update Sebelumnya
 
+### v2.2
+- **Batch Add APIs** - Tambah banyak API sekaligus
+- Dukungan bulk import dengan format sederhana
+- Validasi dan testing komprehensif
+
 ### v2.1
-- Nama API sekarang preserve case asli (contoh: "Main Server")
+- Nama API preserve case asli
 - Dukungan spasi dalam nama API
 - Pengecekan uniqueness case-insensitive
 
 ### v2.0
-- Migrasi dari python-telegram-bot ke aiogram 3.24.0
-- Arsitektur async-first modern dengan sistem Router
-- FSM (Finite State Machine) built-in untuk conversation flow yang lebih bersih
-- Performa dan efisiensi memori yang lebih baik
-- Struktur kode yang lebih bersih dan pythonic
+- Migrasi ke aiogram 3.24.0
+- Arsitektur async-first modern
+- FSM built-in untuk flow yang lebih bersih
 
 ## Struktur Project
 
@@ -214,6 +217,11 @@ Struktur menu:
     - Pilih API (jika lebih dari satu)
     - List VMs
     - VM Details (status, IP, VPS ID, resources)
+      - Start VM (jika stopped)
+      - Stop VM (jika running)
+      - Restart VM (jika running)
+      - Power Off VM (jika running)
+      - Refresh status
   - About
   - Update Bot (jika tersedia)
 
@@ -261,9 +269,10 @@ Backup VPS|https://panel3.com:4085/index.php|key789|pass789
 
 ## Fitur yang Direncanakan
 
-- Kontrol power VM (start/stop/restart)
 - Manajemen port forwarding
-- Monitoring resource
+- Grafik monitoring resource
+- Aksi terjadwal
+- Operasi VM bulk
 
 ## Author
 

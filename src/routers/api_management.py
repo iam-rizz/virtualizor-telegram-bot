@@ -462,44 +462,50 @@ async def batch_input_process(message: Message, state: FSMContext):
         parts = line.split("|")
 
         if len(parts) != 4:
-            results.append(f"{idx}\\. ❌ Invalid format")
+            results.append(f"{idx}\\. \\[FAIL\\] Invalid format")
             failed_count += 1
             continue
 
         name, url, key, password = [p.strip() for p in parts]
 
         if not name or len(name) < 2:
-            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Name too short")
+            results.append(
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Name too short"
+            )
             failed_count += 1
             continue
 
         if len(name) > 50:
-            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Name too long")
+            results.append(
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Name too long"
+            )
             failed_count += 1
             continue
 
         if not all(c.isalnum() or c in " -_" for c in name):
             results.append(
-                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Invalid characters"
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Invalid characters"
             )
             failed_count += 1
             continue
 
         if await db.api_exists_case_insensitive(name):
-            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Already exists")
+            results.append(
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Already exists"
+            )
             failed_count += 1
             continue
 
         if not url.startswith("https://"):
             results.append(
-                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- URL must be HTTPS"
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- URL must be HTTPS"
             )
             failed_count += 1
             continue
 
         if len(key) < 10 or len(password) < 5:
             results.append(
-                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Invalid credentials"
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Invalid credentials"
             )
             failed_count += 1
             continue
@@ -509,22 +515,24 @@ async def batch_input_process(message: Message, state: FSMContext):
             result = api.test_connection()
             await db.add_api(name, url, key, password)
             results.append(
-                f"{idx}\\. ✅ `{escape_md(name[:20])}` \\- {result['vm_count']} VMs"
+                f"{idx}\\. \\[OK\\] `{escape_md(name[:20])}` \\- {result['vm_count']} VMs"
             )
             success_count += 1
         except APIConnectionError:
             results.append(
-                f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Connection failed"
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Connection failed"
             )
             failed_count += 1
         except AuthenticationError:
-            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Auth failed")
+            results.append(
+                f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Auth failed"
+            )
             failed_count += 1
         except Exception as e:
-            results.append(f"{idx}\\. ❌ `{escape_md(name[:20])}` \\- Error")
+            results.append(f"{idx}\\. \\[FAIL\\] `{escape_md(name[:20])}` \\- Error")
             failed_count += 1
 
-    summary = f"✅ {success_count} succeeded, ❌ {failed_count} failed"
+    summary = f"{success_count} succeeded, {failed_count} failed"
 
     text = (
         "*Batch Add Results*\n"

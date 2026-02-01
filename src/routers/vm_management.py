@@ -412,6 +412,29 @@ async def vm_detail(callback: CallbackQuery):
         )
 
         builder = InlineKeyboardBuilder()
+
+        if vm["status"] == "running":
+            builder.row(
+                InlineKeyboardButton(
+                    text="Restart", callback_data=f"vmact_{api_name}_{vpsid}_restart"
+                ),
+                InlineKeyboardButton(
+                    text="Stop", callback_data=f"vmact_{api_name}_{vpsid}_stop"
+                ),
+            )
+            builder.row(
+                InlineKeyboardButton(
+                    text="Power Off",
+                    callback_data=f"vmact_{api_name}_{vpsid}_poweroff",
+                )
+            )
+        elif vm["status"] == "stopped":
+            builder.row(
+                InlineKeyboardButton(
+                    text="Start", callback_data=f"vmact_{api_name}_{vpsid}_start"
+                )
+            )
+
         builder.row(
             InlineKeyboardButton(text="Refresh", callback_data=f"vm_{api_name}_{vpsid}")
         )
@@ -435,4 +458,108 @@ async def vm_detail(callback: CallbackQuery):
         for btn in get_nav_buttons(f"vmapi_{api_name}", True):
             builder.add(btn)
         builder.adjust(2)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("vmact_"))
+async def vm_action_handler(callback: CallbackQuery):
+    await callback.answer()
+
+    if not auth_check(callback.from_user.id):
+        return
+
+    parts = callback.data.split("_", 3)
+    if len(parts) < 4:
+        return
+
+    api_name = parts[1]
+    vpsid = parts[2]
+    action = parts[3]
+
+    api_config = await db.get_api(api_name)
+    if not api_config:
+        return
+
+    action_names = {
+        "start": "Starting",
+        "stop": "Stopping",
+        "restart": "Restarting",
+        "poweroff": "Powering off",
+    }
+    action_name = action_names.get(action, action)
+
+    text = (
+        f"*VM Action*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"_{action_name} VM\\.\\.\\._\n\n"
+        "Please wait\\.\\.\\."
+    )
+    await callback.message.edit_text(text)
+
+    try:
+        api = VirtualizorAPI.from_db_config(api_config)
+        api.vm_action(vpsid, action)
+
+        action_past = {
+            "start": "started",
+            "stop": "stopped",
+            "restart": "restarted",
+            "poweroff": "powered off",
+        }
+        action_done = action_past.get(action, action)
+
+        text = (
+            f"*VM Action*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"VM successfully {action_done}\\.\n\n"
+            f"*VPS ID:* `{escape_md(vpsid)}`\n"
+            f"*Action:* {escape_md(action.title())}\n\n"
+            "_Refreshing VM details\\.\\.\\._"
+        )
+        await callback.message.edit_text(text)
+
+        import asyncio
+
+        await asyncio.sleep(2)
+
+        await vm_detail(callback)
+
+    except APIError as e:
+        text = (
+            f"*VM Action Failed*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Failed to {action} VM\\.\n\n"
+            f"*Error:* `{escape_md(str(e))}`\n\n"
+            "Please try again or check the Virtualizor panel\\." + FOOTER
+        )
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="Retry", callback_data=f"vmact_{api_name}_{vpsid}_{action}"
+            ),
+            InlineKeyboardButton(text="< Back", callback_data=f"vm_{api_name}_{vpsid}"),
+        )
+        nav_builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+            nav_builder.add(btn)
+        nav_builder.adjust(2)
+        builder.attach(nav_builder)
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
+
+    except (APIConnectionError, AuthenticationError) as e:
+        text = (
+            f"*Connection Error*\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Unable to connect to Virtualizor panel\\.\n\n"
+            f"*Error:* `{escape_md(str(e))}`" + FOOTER
+        )
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(text="< Back", callback_data=f"vm_{api_name}_{vpsid}")
+        )
+        nav_builder = InlineKeyboardBuilder()
+        for btn in get_nav_buttons(f"vmapi_{api_name}", True):
+            nav_builder.add(btn)
+        nav_builder.adjust(2)
+        builder.attach(nav_builder)
         await callback.message.edit_text(text, reply_markup=builder.as_markup())

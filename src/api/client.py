@@ -148,3 +148,20 @@ class VirtualizorAPI:
             pass
 
         return stats
+
+    def vm_action(self, vpsid: str, action: str) -> Dict[str, Any]:
+        valid_actions = ["start", "stop", "restart", "poweroff"]
+        if action not in valid_actions:
+            raise APIError(f"Invalid action: {action}")
+
+        response = self._request(action, svs=vpsid)
+
+        if "error" in response and response["error"]:
+            error_msg = response.get("error", {})
+            if isinstance(error_msg, dict):
+                error_msg = (
+                    list(error_msg.values())[0] if error_msg else "Unknown error"
+                )
+            raise APIError(str(error_msg))
+
+        return {"success": True, "action": action, "vpsid": vpsid}
